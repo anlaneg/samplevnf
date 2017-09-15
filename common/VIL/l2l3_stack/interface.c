@@ -1089,6 +1089,7 @@ void ifm_register_for_linkupdate(uint32_t clientid,
 	ifm.nclient++;
 }
 
+//配置接口
 int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 {
 	int status, sock;
@@ -1140,9 +1141,11 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 		rte_eth_dev_stop(port_id);
 	}
 	/*Configure an Ethernet device. rets 0 on success queue */
+	//设备配置，收队列数，发队列数，及端口配置信息
 	status = rte_eth_dev_configure(port_id, pconfig->nrx_queue,
 							 pconfig->ntx_queue, &pconfig->port_conf);
 	if (status < 0) {
+		//配置失败
 		ifm_remove_port_details(port_id);
 		RTE_LOG(ERR, IFM, "%s: rte_eth_dev_configure is failed"
 			"for port %u.\n\r", __FUNCTION__, port_id);

@@ -46,7 +46,7 @@ struct pipeline {
 	struct rte_ring *msgq_in[PIPELINE_MAX_MSGQ_IN];
 	struct rte_ring *msgq_out[PIPELINE_MAX_MSGQ_OUT];
 
-	uint32_t n_ports_in;
+	uint32_t n_ports_in;//inport数目
 	uint32_t n_ports_out;
 	uint32_t n_tables;
 	uint32_t n_msgq;

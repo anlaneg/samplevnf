@@ -8350,6 +8350,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 	myApp = (struct app_params *) arg;
 
 	/* Input ports */
+	//创建in-port
 	p->n_ports_in = params->n_ports_in;
 	for (i = 0; i < p->n_ports_in; i++) {
 		/* passing our cgnapt pipeline in call back arg */
@@ -8480,6 +8481,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			rte_free(p);
 			return NULL;
 		}
+		//表创建成功，向表中添加一条默认表项
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT_META
 		};

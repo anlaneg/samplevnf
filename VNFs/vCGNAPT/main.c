@@ -21,18 +21,21 @@ static struct app_params app;
 int
 main(int argc, char **argv)
 {
+	//log初始化
 	rte_openlog_stream(stderr);
 
 	/* Config */
+	//处理配置
 	app_config_init(&app);
 
 	app_config_args(&app, argc, argv);
 
+	//如果需要预处理，则采用app->preproc对配置文件进行预处理，生成app->parser_file
 	app_config_preproc(&app);
 
 	app_config_parse(&app, app.parser_file);
 
-	app_config_check(&app);
+	app_config_check(&app);//配置检查
 
 	/* Timer subsystem init*/
 	rte_timer_subsystem_init();

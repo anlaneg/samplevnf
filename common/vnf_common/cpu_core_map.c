@@ -24,13 +24,13 @@
 #include "cpu_core_map.h"
 
 struct cpu_core_map {
-	uint32_t n_max_sockets;
-	uint32_t n_max_cores_per_socket;
-	uint32_t n_max_ht_per_core;
+	uint32_t n_max_sockets;//最大socket数目
+	uint32_t n_max_cores_per_socket;//每socket最大core数
+	uint32_t n_max_ht_per_core;//每core最大ht数
 	uint32_t n_sockets;
 	uint32_t n_cores_per_socket;
-	uint32_t n_ht_per_core;
-	int map[0];
+	uint32_t n_ht_per_core;//实际每个core里有多少个ht
+	int map[0];//用了的core_id 置其id,没有用到的置-1
 };
 
 static inline uint32_t
@@ -69,8 +69,8 @@ cpu_core_map_init(uint32_t n_max_sockets,
 		return NULL;
 
 	/* Memory allocation */
-	map_size = n_max_sockets * n_max_cores_per_socket * n_max_ht_per_core;
-	map_mem_size = sizeof(struct cpu_core_map) + map_size * sizeof(int);
+	map_size = n_max_sockets * n_max_cores_per_socket * n_max_ht_per_core;//ht数目
+	map_mem_size = sizeof(struct cpu_core_map) + map_size * sizeof(int);//map占用内存大小
 	map = (struct cpu_core_map *) malloc(map_mem_size);
 	if (map == NULL)
 		return NULL;
@@ -104,6 +104,7 @@ cpu_core_map_init(uint32_t n_max_sockets,
 	return map;
 }
 
+//通过dpdk方式获取core情况
 int
 cpu_core_map_compute_eal(struct cpu_core_map *map)
 {
@@ -116,10 +117,10 @@ cpu_core_map_compute_eal(struct cpu_core_map *map)
 
 		n_detected = 0;
 		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-			struct lcore_config *p = &lcore_config[lcore_id];
+			struct lcore_config *p = &lcore_config[lcore_id];//取dpdk检查出来的core情况
 
 			if ((p->detected) && (p->socket_id == socket_id))
-				n_detected++;
+				n_detected++;//在此socket上，识别出多少core
 		}
 
 		core_id_contig = 0;
@@ -136,12 +137,13 @@ cpu_core_map_compute_eal(struct cpu_core_map *map)
 				if ((p->detected) &&
 					(p->socket_id == socket_id) &&
 					(p->core_id == core_id)) {
+					//计算ht_id对应的map中的位置
 					uint32_t pos = cpu_core_map_pos(map,
 						socket_id,
 						core_id_contig,
 						ht_id);
 
-					map->map[pos] = lcore_id;
+					map->map[pos] = lcore_id;//指出core id
 					ht_id++;
 					n_detected--;
 				}
@@ -314,6 +316,7 @@ cpu_core_map_get_socket_id_linux(int lcore_id)
 	return socket_id;
 }
 
+//通过linux方式获取core map
 int
 cpu_core_map_compute_linux(struct cpu_core_map *map)
 {
@@ -386,6 +389,7 @@ cpu_core_map_compute_linux(struct cpu_core_map *map)
 	return 0;
 }
 
+//显示检测出来的coremap
 void
 cpu_core_map_print(struct cpu_core_map *map)
 {

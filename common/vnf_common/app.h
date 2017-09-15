@@ -193,7 +193,7 @@ struct app_pipeline_params {
 	char *name;
 	uint8_t parsed;
 
-	char type[APP_PIPELINE_TYPE_SIZE];
+	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型
 
 	uint32_t socket_id;
 	uint32_t core_id;
@@ -267,14 +267,14 @@ struct app_thread_data {
 
 struct app_eal_params {
 	/* Map lcore set to physical cpu set */
-	char *coremap;
+	char *coremap;//来自dpdk --lcores参数
 
 	/* Core ID that is used as master */
-	uint32_t master_lcore_present;
-	uint32_t master_lcore;
+	uint32_t master_lcore_present;//是否指定了master_lcore参数
+	uint32_t master_lcore;//master_lcore id号
 
 	/* Number of memory channels */
-	uint32_t channels_present;
+	uint32_t channels_present;//是否指定了
 	uint32_t channels;
 
 	/* Memory to allocate (see also --socket-mem) */
@@ -421,7 +421,7 @@ struct app_eal_params {
 #define APP_THREAD_HEADROOM_STATS_COLLECT        1
 #endif
 
-uint8_t enable_hwlb;
+uint8_t enable_hwlb;//启用rss hash
 uint8_t enable_flow_dir;
 
 #define APP_CORE_MASK_SIZE					\
@@ -429,19 +429,19 @@ uint8_t enable_flow_dir;
 
 struct app_params {
 	/* Config */
-	char app_name[APP_APPNAME_SIZE];
-	const char *config_file;
-	const char *script_file;
-	const char *parser_file;
-	const char *output_file;
-	const char *preproc;
-	const char *preproc_args;
-	uint64_t port_mask;
-	uint32_t log_level;
+	char app_name[APP_APPNAME_SIZE];//app名称（由argv[0]获取）
+	const char *config_file;//配置文件（-f参数给出）
+	const char *script_file;//脚本文件 (-s参数给出）
+	const char *parser_file;//如果需要预处理，则parser_file由config_file加后缀生成，否则等于config_file
+	const char *output_file;//最终配置文件（输出用,由config_file加后缀生成）
+	const char *preproc;//(通过--preproc给出）
+	const char *preproc_args;//（通过--preproc-args给出）
+	uint64_t port_mask;//通过(-p参数给出）
+	uint32_t log_level;//通过(-l参数给出）
 
 	struct app_eal_params eal_params;
 	struct app_mempool_params mempool_params[APP_MAX_MEMPOOLS];
-	struct app_link_params link_params[APP_MAX_LINKS];
+	struct app_link_params link_params[APP_MAX_LINKS];//接口信息
 	struct app_pktq_hwq_in_params hwq_in_params[APP_MAX_HWQ_IN];
 	struct app_pktq_hwq_out_params hwq_out_params[APP_MAX_HWQ_OUT];
 	struct app_pktq_swq_params swq_params[APP_MAX_PKTQ_SWQ];
@@ -451,6 +451,7 @@ struct app_params {
 	struct app_msgq_params msgq_params[APP_MAX_MSGQ];
 	struct app_pipeline_params pipeline_params[APP_MAX_PIPELINES];
 
+	//各数组的有效长度
 	uint32_t n_mempools;
 	uint32_t n_links;
 	uint32_t n_pktq_hwq_in;
@@ -462,12 +463,12 @@ struct app_params {
 	uint32_t n_msgq;
 	uint32_t n_pipelines;
 
-	uint32_t header_csum_req;
-	uint32_t n_hwlb_q;
+	uint32_t header_csum_req;//碍件checksum开启（通过--disable-hw-csum参数可关闭）
+	uint32_t n_hwlb_q;//（通过--hwlb 参数给出）
 	/* Init */
 	char *eal_argv[1 + APP_EAL_ARGC];
-	struct cpu_core_map *core_map;
-        uint64_t core_mask[APP_CORE_MASK_SIZE];
+	struct cpu_core_map *core_map;//系统可用的core情况
+        uint64_t core_mask[APP_CORE_MASK_SIZE];//占用的core的掩码
 	struct rte_mempool *mempool[APP_MAX_MEMPOOLS];
 	struct rte_ring *swq[APP_MAX_PKTQ_SWQ];
 	struct rte_sched_port *tm[APP_MAX_PKTQ_TM];
@@ -475,7 +476,7 @@ struct app_params {
 	struct pipeline_type pipeline_type[APP_MAX_PIPELINE_TYPES];
 	struct app_pipeline_data pipeline_data[APP_MAX_PIPELINES];
 	struct app_thread_data thread_data[APP_MAX_THREADS];
-	cmdline_parse_ctx_t cmds[APP_MAX_CMDS + 1];
+	cmdline_parse_ctx_t cmds[APP_MAX_CMDS + 1];//注册的命令行处理函数
 
 	int eal_argc;
 	uint32_t n_pipeline_types;
@@ -524,6 +525,7 @@ do									\
 	sscanf(obj->name, prefix "%" SCNu32, &id);				\
 while (0)								\
 
+//将obj_name通过strdup生成一份，并加入到obj_array中，置obj的name
 #define APP_PARAM_ADD(obj_array, obj_name)				\
 ({									\
 	ssize_t obj_idx;						\

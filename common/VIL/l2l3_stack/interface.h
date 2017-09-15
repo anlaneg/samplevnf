@@ -146,16 +146,16 @@ struct mempool_config {
  */
 typedef struct _port_config_ {
 	uint8_t port_id;			/**< port id or pmd id to be configured */
-	int nrx_queue;				/**< no of rx queues */
+	int nrx_queue;				/**< no of rx queues */ //接受队列数
 	int ntx_queue;				/**< no of tx queues */
 	uint32_t tx_buf_size;
 	uint32_t state;				/**< noshut/shut the admin state of the port*/
-	uint32_t promisc;			/**< enable/diable promisc mode*/
+	uint32_t promisc;			/**< enable/diable promisc mode*/ //是否开启混杂模式
 	struct mempool_config mempool;
 						/**< Mempool configurations */
 	struct rte_eth_conf port_conf;
 						/**< port configuration */
-	struct rte_eth_rxconf rx_conf;
+	struct rte_eth_rxconf rx_conf;//port的rx配置
 						/**< rx queue configurations */
 	struct rte_eth_txconf tx_conf;
 						/**< tx queue configurations */

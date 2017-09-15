@@ -97,11 +97,11 @@ app_init_eal(struct app_params *app)
 	uint32_t i;
 	int status;
 
-	app->eal_argv[n_args++] = strdup(app->app_name);
+	app->eal_argv[n_args++] = strdup(app->app_name);//进程名称
 
 	app_core_build_core_mask_string(app, core_mask_str);
 	snprintf(buffer, sizeof(buffer), "-c%s", core_mask_str);
-	app->eal_argv[n_args++] = strdup(buffer);
+	app->eal_argv[n_args++] = strdup(buffer);//coremask取值
 
 	if (p->coremap) {
 		snprintf(buffer, sizeof(buffer), "--lcores=%s", p->coremap);
@@ -297,6 +297,7 @@ app_init_eal(struct app_params *app)
 		fprintf(stdout, "\"\n");
 	}
 
+	//传入参数，初始化dpdk
 	status = rte_eal_init(app->eal_argc, app->eal_argv);
 	if (status < 0)
 		rte_panic("EAL init error\n");
@@ -1588,6 +1589,7 @@ app_init_pipelines(struct app_params *app)
 
 		APP_LOG(app, HIGH, "Initializing %s ...", params->name);
 
+		//检查是对哪个pipeline_type进行配置
 		ptype = app_pipeline_type_find(app, params->type);
 		if (ptype == NULL)
 			rte_panic("Init error: Unknown pipeline type \"%s\"\n",
@@ -1704,14 +1706,15 @@ int app_init(struct app_params *app)
 	app_init_core_map(app);
 	app_init_core_mask(app);
 
-	app_init_eal(app);
+	app_init_eal(app);//dpdk初始化
 	ifm_init();
 	//app_init_mempool(app);
-	app_init_link(app);
+	app_init_link(app);//port处理
 	app_init_swq(app);
 	app_init_tm(app);
 	app_init_msgq(app);
 
+	//命令回调注册
 	app_pipeline_common_cmd_push(app);
 	app_pipeline_thread_cmd_push(app);
 	app_pipeline_type_register(app, &pipeline_master);
@@ -1735,6 +1738,7 @@ int app_init(struct app_params *app)
 	return 0;
 }
 
+//将pipeline_type内包含的cmd合入
 static int
 app_pipeline_type_cmd_push(struct app_params *app,
 	struct pipeline_type *ptype)
@@ -1797,6 +1801,7 @@ app_pipeline_type_register(struct app_params *app, struct pipeline_type *ptype)
 		return -ENOMEM;
 
 	/* Copy pipeline type */
+	//合入pipeline type
 	memcpy(&app->pipeline_type[app->n_pipeline_types++],
 		ptype,
 		sizeof(struct pipeline_type));

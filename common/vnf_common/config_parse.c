@@ -376,39 +376,40 @@ parse_pipeline_core(uint32_t *socket,
 
 	uint32_t s = 0, c = 0, h = 0, val;
 	uint8_t s_parsed = 0, c_parsed = 0, h_parsed = 0;
-	const char *next = skip_white_spaces(entry);
+	const char *next = skip_white_spaces(entry);//跳过空字符
 	char type;
 
 	/* Expect <CORE> or [sX][cY][h]. At least one parameter is required. */
 	while (*next != '\0') {
 		/* If everything parsed nothing should left */
 		if (s_parsed && c_parsed && h_parsed)
-			return -EINVAL;
+			return -EINVAL;//只容许配置一次
 
 		type = *next;
 		switch (type) {
 		case 's':
-		case 'S':
+		case 'S'://s必须在前，此时s,c,h均没有出现过
 			if (s_parsed || c_parsed || h_parsed)
 				return -EINVAL;
 			s_parsed = 1;
 			next++;
 			break;
 		case 'c':
-		case 'C':
+		case 'C'://c必须在中间，此时s已出来，c,h均没有出现过
 			if (c_parsed || h_parsed)
 				return -EINVAL;
 			c_parsed = 1;
 			next++;
 			break;
 		case 'h':
-		case 'H':
+		case 'H'://h没有出现过
 			if (h_parsed)
 				return -EINVAL;
 			h_parsed = 1;
 			next++;
 			break;
 		default:
+			//对于core的配置，需要在最前面，此时s,c,h均没有出现过(但它只是单独的，否则不生效）
 			/* If it start from digit it must be only core id. */
 			if (!isdigit(*next) || s_parsed || c_parsed || h_parsed)
 				return -EINVAL;
@@ -558,6 +559,7 @@ validate_name(const char *name, const char *prefix, int num)
 	return 0;
 }
 
+//dpdk配置解析
 static void
 parse_eal(struct app_params *app,
 	const char *section_name,
@@ -567,8 +569,9 @@ parse_eal(struct app_params *app,
 	struct rte_cfgfile_entry *entries;
 	int n_entries, i;
 
+	//配置实体数
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
-	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
+	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);//eal需要配置，否则挂
 
 	entries = malloc(n_entries * sizeof(struct rte_cfgfile_entry));
 	PARSE_ERROR_MALLOC(entries != NULL);
@@ -576,21 +579,24 @@ parse_eal(struct app_params *app,
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
 	for (i = 0; i < n_entries; i++) {
-		struct rte_cfgfile_entry *entry = &entries[i];
+		struct rte_cfgfile_entry *entry = &entries[i];//处理每一个配置项
 
 		/* coremask */
+		//coremask不处理
 		if (strcmp(entry->name, "c") == 0) {
 			PARSE_WARNING_IGNORED(0, section_name, entry->name);
 			continue;
 		}
 
 		/* corelist */
+		//corelist不处理
 		if (strcmp(entry->name, "l") == 0) {
 			PARSE_WARNING_IGNORED(0, section_name, entry->name);
 			continue;
 		}
 
 		/* coremap */
+		//lcores参数支持
 		if (strcmp(entry->name, "lcores") == 0) {
 			PARSE_ERROR_DUPLICATE((p->coremap == NULL),
 				section_name,
@@ -600,6 +606,7 @@ parse_eal(struct app_params *app,
 		}
 
 		/* master_lcore */
+		//master lcore指定
 		if (strcmp(entry->name, "master_lcore") == 0) {
 			int status;
 
@@ -657,6 +664,7 @@ parse_eal(struct app_params *app,
 		}
 
 		/* pci_blacklist */
+		//blacklist配置
 		if ((strcmp(entry->name, "pci_blacklist") == 0) ||
 			(strcmp(entry->name, "b") == 0)) {
 			uint32_t i;
@@ -1128,11 +1136,11 @@ parse_pipeline_pktq_in(struct app_params *app,
 		end_tab = strchr(next, '	');
 
 		if (end_space && (!end_tab))
-			end = end_space;
+			end = end_space;//没有tab,有end_space，直接更新end
 		else if ((!end_space) && end_tab)
-			end = end_tab;
+			end = end_tab;//没有end_space,但有end_tab,直接更新end
 		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);
+			end = RTE_MIN(end_space, end_tab);//为什么不用RTE_MAX?
 		else
 			end = NULL;
 
@@ -1371,6 +1379,7 @@ parse_pipeline_msgq_out(struct app_params *app,
 	return 0;
 }
 
+//pipeline配置解析
 static void
 parse_pipeline(struct app_params *app,
 	const char *section_name,
@@ -1382,21 +1391,25 @@ parse_pipeline(struct app_params *app,
 	ssize_t param_idx;
 	int n_entries, i;
 
+	//pipeline段有多少配置项
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
 	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
 
 	entries = malloc(n_entries * sizeof(struct rte_cfgfile_entry));
 	PARSE_ERROR_MALLOC(entries != NULL);
 
+	//取出pipeline段的所有配置项
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
+	//pipeline参数配置容许有多个
 	param_idx = APP_PARAM_ADD(app->pipeline_params, section_name);
 	PARSER_PARAM_ADD_CHECK(param_idx, app->pipeline_params, section_name);
 
 	param = &app->pipeline_params[param_idx];
 
+	//遍历pipeline对应的所有配置项
 	for (i = 0; i < n_entries; i++) {
-		struct rte_cfgfile_entry *ent = &entries[i];
+		struct rte_cfgfile_entry *ent = &entries[i];//取配置项
 
 		if (strcmp(ent->name, "type") == 0) {
 			int w_size = snprintf(param->type, RTE_DIM(param->type),
@@ -1410,6 +1423,7 @@ parse_pipeline(struct app_params *app,
 		}
 
 		if (strcmp(ent->name, "core") == 0) {
+			//解析core
 			int status = parse_pipeline_core(
 				&param->socket_id, &param->core_id,
 				&param->hyper_th_id, ent->value);
@@ -2505,8 +2519,9 @@ create_implicit_links_from_port_mask(struct app_params *app,
 		ssize_t idx;
 
 		if ((port_mask & (1LLU << pmd_id)) == 0)
-			continue;
+			continue;//未开始此port
 
+		//生成link名称 "LINK%d",设置link id号（连续的）
 		snprintf(name, sizeof(name), "LINK%" PRIu32, link_id);
 		idx = APP_PARAM_ADD(app->link_params, name);
 		PARSER_PARAM_ADD_CHECK(idx, app->link_params, name);
@@ -2528,6 +2543,7 @@ assign_link_pmd_id_from_pci_bdf(struct app_params *app)
 	}
 }
 
+//解析配置文件
 int
 app_config_parse(struct app_params *app, const char *file_name)
 {
@@ -2539,19 +2555,21 @@ app_config_parse(struct app_params *app, const char *file_name)
 	create_implicit_mempools(app);
 
 	/* Port mask */
+	//自port_mask生成link信息
 	if (app->port_mask)
 		create_implicit_links_from_port_mask(app, app->port_mask);
 
 	/* Load application configuration file */
-	cfg = rte_cfgfile_load(file_name, 0);
+	cfg = rte_cfgfile_load(file_name, 0);//载入配置文件
 	APP_CHECK((cfg != NULL), "Parse error: Unable to load config "
 		"file %s", file_name);
 
-	sect_count = rte_cfgfile_num_sections(cfg, NULL, 0);
+	sect_count = rte_cfgfile_num_sections(cfg, NULL, 0);//有多少段
 	APP_CHECK((sect_count > 0), "Parse error: number of sections "
 		"in file \"%s\" return %d", file_name,
 		sect_count);
 
+	//填充section_names
 	section_names = malloc(sect_count * sizeof(char *));
 	PARSE_ERROR_MALLOC(section_names != NULL);
 
@@ -2567,12 +2585,13 @@ app_config_parse(struct app_params *app, const char *file_name)
 		cfg_name_len = strlen(section_names[i]);
 
 		/* Find section type */
+		//确保配置的段是认识的
 		for (j = 0; j < (int)RTE_DIM(cfg_file_scheme); j++) {
 			sch_s = &cfg_file_scheme[j];
 			len = strlen(sch_s->prefix);
 
 			if (cfg_name_len < len)
-				continue;
+				continue;//非本段，跳过
 
 			/* After section name we expect only '\0' or digit or
 			 * digit dot digit, so protect against false matching,
@@ -2582,12 +2601,13 @@ app_config_parse(struct app_params *app, const char *file_name)
 			 */
 			if ((section_names[i][len] != '\0') &&
 				!isdigit(section_names[i][len]))
-				continue;
+				continue;//认为区配
 
 			if (strncmp(sch_s->prefix, section_names[i], len) == 0)
-				break;
+				break;//配置失败，报错
 		}
 
+		//对失配的段报错
 		APP_CHECK(j < (int)RTE_DIM(cfg_file_scheme),
 			"Parse error: unknown section %s",
 			section_names[i]);
@@ -2598,6 +2618,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 			"Parse error: invalid section name \"%s\"",
 			section_names[i]);
 
+		//对相应的段，按类型进行load,解析相应的配置
 		sch_s->load(app, section_names[i], cfg);
 	}
 
@@ -2606,7 +2627,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 
 	free(section_names);
 
-	rte_cfgfile_close(cfg);
+	rte_cfgfile_close(cfg);//关闭配置文件
 
 	APP_PARAM_COUNT(app->mempool_params, app->n_mempools);
 	APP_PARAM_COUNT(app->link_params, app->n_links);
@@ -2640,7 +2661,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 		assign_link_pmd_id_from_pci_bdf(app);
 
 	/* Save configuration to output file */
-	app_config_save(app, app->output_file);
+	app_config_save(app, app->output_file);//输出用
 
 	/* Load TM configuration files */
 	app_config_parse_tm(app);
@@ -3113,6 +3134,7 @@ save_pipeline_params(struct app_params *app, FILE *f)
 	}
 }
 
+//将配置保存在file_name中
 void
 app_config_save(struct app_params *app, const char *file_name)
 {
@@ -3148,6 +3170,7 @@ app_config_save(struct app_params *app, const char *file_name)
 	free(name);
 }
 
+//初始化默认配置
 int
 app_config_init(struct app_params *app)
 {
@@ -3220,6 +3243,7 @@ filenamedup(const char *filename, const char *suffix)
 	return s;
 }
 
+//解析配置参数
 int
 app_config_args(struct app_params *app, int argc, char **argv)
 {
@@ -3259,7 +3283,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 			&option_index)) != EOF)
 		switch (opt) {
 		case 'f':
-			if (f_present)
+			if (f_present)//f只容许出现一次
 				rte_panic("Error: Config file is provided "
 					"more than once\n");
 			f_present = 1;
@@ -3288,12 +3312,13 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 			break;
 
-		case 'p':
+		case 'p'://port mask
 			if (p_present)
 				rte_panic("Error: PORT_MASK is provided "
 					"more than once\n");
 			p_present = 1;
 
+			//%lx%n 要求%n为串的长度
 			if ((sscanf(optarg, "%" SCNx64 "%n", &app->port_mask,
 				&scaned) != 1) ||
 				((size_t) scaned != strlen(optarg)))
@@ -3305,12 +3330,13 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 			break;
 
-		case 'l':
+		case 'l'://log级别
 			if (l_present)
 				rte_panic("Error: LOG_LEVEL is provided "
 					"more than once\n");
 			l_present = 1;
 
+			//%u%n 要求%n为串的长度
 			if ((sscanf(optarg, "%" SCNu32 "%n", &app->log_level,
 				&scaned) != 1) ||
 				((size_t) scaned != strlen(optarg)) ||
@@ -3404,6 +3430,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	return 0;
 }
 
+//执行预处理命令行（采用app->preproc对配置文件进行预处理，生成app->parser_file)
 int
 app_config_preproc(struct app_params *app)
 {
@@ -3417,6 +3444,7 @@ app_config_preproc(struct app_params *app)
 	APP_CHECK((status == 0), "Error: Unable to open file %s",
 		app->config_file);
 
+	//构造命令行
 	snprintf(buffer, sizeof(buffer), "%s %s %s > %s",
 		app->preproc,
 		app->preproc_args ? app->preproc_args : "",

@@ -425,6 +425,7 @@ check_pipelines(struct app_params *app)
 	}
 }
 
+//配置检查
 int
 app_config_check(struct app_params *app)
 {
