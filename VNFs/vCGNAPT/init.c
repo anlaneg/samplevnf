@@ -1265,6 +1265,7 @@ app_init_msgq(struct app_params *app)
 	}
 }
 
+//将app_pipeline_params转换为pipeline_params
 static void app_pipeline_params_get(struct app_params *app,
 	struct app_pipeline_params *p_in,
 	struct pipeline_params *p_out)
@@ -1598,6 +1599,7 @@ app_init_pipelines(struct app_params *app)
 		app_pipeline_params_get(app, params, &pp);
 
 		/* Back-end */
+		//后端初始化
 		data->be = NULL;
 		if (ptype->be_ops->f_init) {
 			data->be = ptype->be_ops->f_init(&pp, (void *) app);
@@ -1608,6 +1610,7 @@ app_init_pipelines(struct app_params *app)
 		}
 
 		/* Front-end */
+		//前端初始化
 		data->fe = NULL;
 		if (ptype->fe_ops->f_init) {
 			data->fe = ptype->fe_ops->f_init(&pp, (void *) app);
@@ -1717,7 +1720,8 @@ int app_init(struct app_params *app)
 	//命令回调注册
 	app_pipeline_common_cmd_push(app);
 	app_pipeline_thread_cmd_push(app);
-	app_pipeline_type_register(app, &pipeline_master);
+	//app类型注册
+	app_pipeline_type_register(app, &pipeline_master);//处理命令行
 	app_pipeline_type_register(app, &pipeline_cgnapt);
 	app_pipeline_type_register(app, &pipeline_loadb);
 	app_pipeline_type_register(app, &pipeline_timer);

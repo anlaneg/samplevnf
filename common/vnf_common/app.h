@@ -193,8 +193,9 @@ struct app_pipeline_params {
 	char *name;
 	uint8_t parsed;
 
-	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型
+	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型（来源于type配置项）
 
+	//来源于core配置项
 	uint32_t socket_id;
 	uint32_t core_id;
 	uint32_t hyper_th_id;
