@@ -1722,7 +1722,7 @@ int app_init(struct app_params *app)
 	app_pipeline_thread_cmd_push(app);
 	//app类型注册
 	app_pipeline_type_register(app, &pipeline_master);//处理命令行
-	app_pipeline_type_register(app, &pipeline_cgnapt);
+	app_pipeline_type_register(app, &pipeline_cgnapt);//cgnat处理
 	app_pipeline_type_register(app, &pipeline_loadb);
 	app_pipeline_type_register(app, &pipeline_timer);
 	app_pipeline_type_register(app, &pipeline_txrx);

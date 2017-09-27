@@ -43,10 +43,10 @@ struct pipeline_type {
 	const char *name;
 
 	/* pipeline back-end */
-	struct pipeline_be_ops *be_ops;
+	struct pipeline_be_ops *be_ops;//转发逻辑实现
 
 	/* pipeline front-end */
-	struct pipeline_fe_ops *fe_ops;
+	struct pipeline_fe_ops *fe_ops;//前端，维护性动作，命令行处理
 };
 
 static inline uint32_t

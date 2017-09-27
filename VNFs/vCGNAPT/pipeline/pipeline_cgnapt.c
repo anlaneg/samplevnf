@@ -329,6 +329,7 @@ app_pipeline_cgnapt_entry_dbg(struct app_params *app,
  * @return
  *  0 on success, negative on error.
  */
+//cgnat配置添加
 int app_pipeline_cgnapt_add_entry(
 	struct app_params *app,
 	uint32_t pipeline_id,
@@ -353,10 +354,12 @@ int app_pipeline_cgnapt_add_entry(
 	if (req == NULL)
 		return -4;
 
+	//cgnat规则添加，向pipeline_id对应的线程发送消息
 	req->type = PIPELINE_MSG_REQ_CUSTOM;
 	req->subtype = PIPELINE_CGNAPT_MSG_REQ_ENTRY_ADD;
 	memcpy(&req->data, entry_params, sizeof(*entry_params));
 
+	//发送并等待响应
 	rsp = app_msg_send_recv(app, pipeline_id, req, MSG_TIMEOUT_DEFAULT);
 	if (rsp == NULL)
 		return -5;
@@ -513,6 +516,7 @@ struct cmd_entry_add_result {
  *  void pointer data
  *
  */
+//cmd entry添加处理，进行命令行处理
 static void
 cmd_entry_add_parsed(void *parsed_result,
 					__rte_unused struct cmdline *cl, void *data)
@@ -542,6 +546,7 @@ cmd_entry_add_parsed(void *parsed_result,
 	ent_params.prv_phy_port = params->pid;
 	ent_params.ttl = params->ttl;
 
+	//向pipe注入cgnat规则
 	status = app_pipeline_cgnapt_add_entry(app, params->p, &ent_params);
 
 	if (status != 0) {
@@ -551,10 +556,12 @@ cmd_entry_add_parsed(void *parsed_result,
 	}
 }
 
+//这里的p相当于指定类型
 static cmdline_parse_token_string_t cmd_entry_add_p_string =
 TOKEN_STRING_INITIALIZER(struct cmd_entry_add_result, p_string,
 			 "p");
 
+//解析成uint32类型的数字
 static cmdline_parse_token_num_t cmd_entry_add_p =
 TOKEN_NUM_INITIALIZER(struct cmd_entry_add_result, p, UINT32);
 
@@ -584,21 +591,23 @@ TOKEN_NUM_INITIALIZER(struct cmd_entry_add_result, pid, UINT16);
 static cmdline_parse_token_num_t cmd_entry_add_ttl =
 TOKEN_NUM_INITIALIZER(struct cmd_entry_add_result, ttl, UINT32);
 
+//nat规则添加命令行解析
 static cmdline_parse_inst_t cmd_entry_add = {
-	.f = cmd_entry_add_parsed,
+	.f = cmd_entry_add_parsed,//token解析后再处理函数
 	.data = NULL,
 	.help_str = "NAPT entry add",
+	//token解析
 	.tokens = {
-			 (void *)&cmd_entry_add_p_string,
-			 (void *)&cmd_entry_add_p,
-			 (void *)&cmd_entry_add_entry_string,
-			 (void *)&cmd_entry_add_add_string,
-			 (void *)&cmd_entry_add_prv_ip,
-			 (void *)&cmd_entry_add_prv_port,
-			 (void *)&cmd_entry_add_pub_ip,
-			 (void *)&cmd_entry_add_pub_port,
-			 (void *)&cmd_entry_add_pid,
-			 (void *)&cmd_entry_add_ttl,
+			 (void *)&cmd_entry_add_p_string,//'p'
+			 (void *)&cmd_entry_add_p,//解析为数字，pipeline id
+			 (void *)&cmd_entry_add_entry_string,//'entry'
+			 (void *)&cmd_entry_add_add_string,//'add'
+			 (void *)&cmd_entry_add_prv_ip,//<ip-addr>
+			 (void *)&cmd_entry_add_prv_port,//<port>
+			 (void *)&cmd_entry_add_pub_ip,//转换后ip<仅支持ipv4地址>
+			 (void *)&cmd_entry_add_pub_port,//<pub-port>
+			 (void *)&cmd_entry_add_pid,//入接口 ？
+			 (void *)&cmd_entry_add_ttl,//ttl
 			 NULL,
 			 },
 };
@@ -1490,9 +1499,9 @@ static cmdline_parse_inst_t cmd_clear_stats = {
 
 
 static cmdline_parse_ctx_t pipeline_cmds[] = {
-	(cmdline_parse_inst_t *) &cmd_entry_add,
-	(cmdline_parse_inst_t *) &cmd_entry_del,
-	(cmdline_parse_inst_t *) &cmd_entry_ls,
+	(cmdline_parse_inst_t *) &cmd_entry_add,//cgnat配置实体添加
+	(cmdline_parse_inst_t *) &cmd_entry_del,//cgnat配置删除
+	(cmdline_parse_inst_t *) &cmd_entry_ls,//cgnat配置list
 	(cmdline_parse_inst_t *) &cmd_entry_dbg,
 	(cmdline_parse_inst_t *) &cmd_entry_addm,
 	(cmdline_parse_inst_t *) &cmd_ver,
@@ -1507,6 +1516,7 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 	NULL,
 };
 
+//cgnat配置命令行
 static struct pipeline_fe_ops pipeline_cgnapt_fe_ops = {
 	.f_init = pipeline_cgnapt_init,
 	.f_free = app_pipeline_cgnapt_free,
@@ -1516,5 +1526,5 @@ static struct pipeline_fe_ops pipeline_cgnapt_fe_ops = {
 struct pipeline_type pipeline_cgnapt = {
 	.name = "CGNAPT",
 	.be_ops = &pipeline_cgnapt_be_ops,
-	.fe_ops = &pipeline_cgnapt_fe_ops,
+	.fe_ops = &pipeline_cgnapt_fe_ops,//命令处理
 };

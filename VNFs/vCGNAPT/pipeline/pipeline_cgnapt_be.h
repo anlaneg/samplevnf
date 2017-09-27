@@ -355,6 +355,7 @@ extern struct public_ip all_public_ip[CGNAPT_MAX_PUB_IP];
  */
 struct pipeline_cgnapt {
 	struct pipeline p;
+	//消息处理回调注册点
 	pipeline_msg_req_handler custom_handlers[PIPELINE_CGNAPT_MSG_REQS];
 
 	uint32_t n_flows;

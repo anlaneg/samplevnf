@@ -1270,9 +1270,10 @@ static pipeline_msg_req_handler handlers[] = {
 	[PIPELINE_MSG_REQ_PORT_IN_DISABLE] =
 		pipeline_msg_req_port_in_disable_handler,
 	[PIPELINE_MSG_REQ_CUSTOM] =
-		pipeline_cgnapt_msg_req_custom_handler,
+		pipeline_cgnapt_msg_req_custom_handler,//处理定制消息
 };
 
+//定制消息处理注册
 static pipeline_msg_req_handler custom_handlers[] = {
 	[PIPELINE_CGNAPT_MSG_REQ_ENTRY_ADD] =
 		pipeline_cgnapt_msg_req_entry_add_handler,
@@ -2557,6 +2558,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 				&p_nat->lkup_indx[0]);
 
 	if (unlikely(lookup_result < 0)) {
+		//未查到匹配报文，丢包
 		/* unknown error, just discard all packets */
 		printf("Unexpected hash lookup error %d, discarding "
 			"all packets", lookup_result);
@@ -3486,6 +3488,7 @@ PKT3:
  *  A pointer to main CGNAPT structure
  *
  */
+//提取报文的key,准备查询nat规则表
 void
 pkt_work_cgnapt_key_ipv4_prv(
 	struct rte_mbuf *pkt,
@@ -4434,6 +4437,7 @@ pkt_work_cgnapt_ipv4_pub(
  *  A pointer to main CGNAPT structure
  *
  */
+//私有地址转公有地址
 void
 pkt4_work_cgnapt_ipv4_prv(
 	struct rte_mbuf **pkts,
@@ -4682,12 +4686,12 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		{
 			/* Egress */
-			*src_addr = rte_bswap32(entry->data.pub_ip);
+			*src_addr = rte_bswap32(entry->data.pub_ip);//填写转换后地址
 
 			#ifdef NAT_ONLY_CONFIG_REQ
 			if (!nat_only_config_flag) {
 			#endif
-				*src_port = rte_bswap16(entry->data.pub_port);
+				*src_port = rte_bswap16(entry->data.pub_port);//填写转换后port
 			#ifdef NAT_ONLY_CONFIG_REQ
 			}
 			#endif
@@ -8145,7 +8149,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 	#else
 
 	if (!p->max_port_per_client)
-		p->is_static_cgnapt = 1;
+		p->is_static_cgnapt = 1;//指明静态nat
 	#endif
 
 	/* Check that mandatory arguments are present */
@@ -8413,6 +8417,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 	}
 
 	/* Output ports */
+	//output ports创建
 	p->n_ports_out = params->n_ports_out;
 	for (i = 0; i < p->n_ports_out; i++) {
 		struct rte_pipeline_port_out_params port_params = {
@@ -8540,6 +8545,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 		p->msgq_out[i] = params->msgq_out[i];
 
 	/* Message handlers */
+	//消息回调注册
 	memcpy(p->handlers, handlers, sizeof(p->handlers));
 	memcpy(p_nat->custom_handlers,
 			 custom_handlers, sizeof(p_nat->custom_handlers));
@@ -8692,10 +8698,11 @@ static int pipeline_cgnapt_timer(void *pipeline)
  * @return
  *  void pointer of response
  */
+//cgnat custom 回调处理
 void *pipeline_cgnapt_msg_req_custom_handler(struct pipeline *p, void *msg)
 {
 	struct pipeline_cgnapt *p_nat = (struct pipeline_cgnapt *)p;
-	struct pipeline_custom_msg_req *req = msg;
+	struct pipeline_custom_msg_req *req = msg;//请求消息
 	pipeline_msg_req_handler f_handle;
 
 	f_handle = (req->subtype < PIPELINE_CGNAPT_MSG_REQS) ?
@@ -8705,7 +8712,7 @@ void *pipeline_cgnapt_msg_req_custom_handler(struct pipeline *p, void *msg)
 	if (f_handle == NULL)
 		f_handle = pipeline_msg_req_invalid_handler;
 
-	return f_handle(p, req);
+	return f_handle(p, req);//处理请求
 }
 
 /**
@@ -8842,6 +8849,7 @@ void *pipeline_cgnapt_msg_req_nsp_del_handler(
  * @return
  *  void pointer of response
  */
+//pipeline执行entry添加
 void *pipeline_cgnapt_msg_req_entry_add_handler(struct pipeline *p, void *msg)
 {
 	struct pipeline_cgnapt_entry_add_msg_req *req = msg;
@@ -8853,10 +8861,10 @@ void *pipeline_cgnapt_msg_req_entry_add_handler(struct pipeline *p, void *msg)
 
 	uint8_t src_ipv6[16];
 
-	uint32_t dest_ip = req->data.pub_ip;
-	uint16_t src_port = req->data.prv_port;
-	uint16_t dest_port = req->data.pub_port;
-	uint16_t rx_port = req->data.prv_phy_port;
+	uint32_t dest_ip = req->data.pub_ip;//转换后ip
+	uint16_t src_port = req->data.prv_port;//
+	uint16_t dest_port = req->data.pub_port;//转换后port
+	uint16_t rx_port = req->data.prv_phy_port;//从哪个口收到报文
 	uint32_t ttl = req->data.ttl;
 
 	if (type == CGNAPT_ENTRY_IPV6)
@@ -8962,6 +8970,7 @@ void *pipeline_cgnapt_msg_req_entry_add_handler(struct pipeline *p, void *msg)
  * @return
  *  0 if success, negative if fails
  */
+//向表中添加静态表项
 int
 pipeline_cgnapt_msg_req_entry_addm_pair(
 	struct pipeline *p, __rte_unused void *msg,
@@ -8974,6 +8983,7 @@ pipeline_cgnapt_msg_req_entry_addm_pair(
 	struct pipeline_cgnapt_entry_key key;
 	struct pipeline_cgnapt *p_nat = (struct pipeline_cgnapt *)p;
 
+	//设置匹配项，src_ip,src_port,rx_port
 	key.ip = src_ip;
 	key.port = src_port;
 	key.pid = rx_port;
@@ -9082,6 +9092,7 @@ pipeline_cgnapt_msg_req_entry_addm_pair(
  * @return
  *  void pointer of response
  */
+//添加多个NAPT项
 void *pipeline_cgnapt_msg_req_entry_addm_handler(struct pipeline *p, void *msg)
 {
 	struct pipeline_cgnapt_entry_addm_msg_req *req = msg;
