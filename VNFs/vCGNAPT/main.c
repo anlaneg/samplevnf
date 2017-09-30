@@ -44,6 +44,7 @@ main(int argc, char **argv)
 	app_init(&app);
 
 	/* Run-time */
+	//各core均执行app_thread,包括master core
 	rte_eal_mp_remote_launch(
 		app_thread,
 		(void *) &app,

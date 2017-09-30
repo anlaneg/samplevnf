@@ -218,6 +218,7 @@ thread_headroom_update(struct app_thread_data *t, uint64_t time)
 int
 app_thread(void *arg)
 {
+	//获取当前服务本线程的core,取对应线程数据
 	struct app_params *app = (struct app_params *) arg;
 	uint32_t core_id = rte_lcore_id(), i, j;
 	struct app_thread_data *t = &app->thread_data[core_id];
@@ -295,7 +296,6 @@ app_thread(void *arg)
 				if (deadline < t_deadline)
 					t_deadline = deadline;
 			}
-
 
 			t->deadline = t_deadline;
 		}

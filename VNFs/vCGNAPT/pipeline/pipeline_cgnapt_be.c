@@ -7791,6 +7791,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 		if (strcmp(arg_name, "prv_que_handler") == 0) {
 
 			if (prv_que_handler_present) {
+				//prv_que_handler配置多次
 				printf("Duplicate pktq_in_prv ..\n\n");
 				return -1;
 			}
@@ -7800,8 +7801,12 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 			char *token;
 			int rxport = 0;
 			/* get the first token */
+			//解析格式：'(xxx,xx,x)'
+			//取arg_value字符串'('前的内容
 			token = strtok(arg_value, "(");
+			//取token中')'前的内容
 			token = strtok(token, ")");
+			//取‘,'号前的内容
 			token = strtok(token, ",");
 			printf("***** prv_que_handler *****\n");
 
@@ -7814,6 +7819,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 
 			/* walk through other tokens */
 			while (token != NULL) {
+				//分隔每个逗号值
 				printf(" %s\n", token);
 				rxport =  atoi(token);
 				cgnapt_prv_que_port_index[n_prv_in_port++] =
@@ -7852,6 +7858,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 		if (strcmp(arg_name, "vnf_set") == 0)
 			vnf_set_count++;
 
+		//取public_ip_range段，格式(%d,%d)
 		if (strcmp(arg_name, "public_ip_range") == 0) {
 			public_ip_range_present = 1;
 			if (public_ip_port_range_present) {
@@ -7895,6 +7902,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 			continue;
 		}
 
+		//解析某ip的port range段，格式 %x:(%d,%d)
 		if (strcmp(arg_name, "public_ip_port_range") == 0) {
 			public_ip_port_range_present = 1;
 			if (nat_only_config_flag || public_ip_range_present) {
@@ -8128,6 +8136,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 		}
 
 		/* cgnapt_debug */
+		//指明是否开启debug
 		if (strcmp(arg_name, "cgnapt_debug") == 0) {
 			CGNAPT_DEBUG = atoi(arg_value);
 

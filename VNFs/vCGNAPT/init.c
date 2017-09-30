@@ -1576,6 +1576,7 @@ static void app_pipeline_params_get(struct app_params *app,
 	}
 }
 
+//初始化app对应的所有pipeline
 static void
 app_init_pipelines(struct app_params *app)
 {
@@ -1599,7 +1600,7 @@ app_init_pipelines(struct app_params *app)
 		app_pipeline_params_get(app, params, &pp);
 
 		/* Back-end */
-		//后端初始化
+		//后端初始化（各pipeline后端初始化）
 		data->be = NULL;
 		if (ptype->be_ops->f_init) {
 			data->be = ptype->be_ops->f_init(&pp, (void *) app);
@@ -1610,7 +1611,7 @@ app_init_pipelines(struct app_params *app)
 		}
 
 		/* Front-end */
-		//前端初始化
+		//前端初始化(各pipeline前端初始化）
 		data->fe = NULL;
 		if (ptype->fe_ops->f_init) {
 			data->fe = ptype->fe_ops->f_init(&pp, (void *) app);

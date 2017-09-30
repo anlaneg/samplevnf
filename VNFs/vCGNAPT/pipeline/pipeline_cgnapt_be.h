@@ -367,7 +367,7 @@ struct pipeline_cgnapt {
 
 	/* Dynamic NAPT Start */
 	uint8_t is_static_cgnapt;
-	uint16_t max_port_per_client;
+	uint16_t max_port_per_client;//每client最大port数，此值开启则为动态nat
 	uint16_t max_clients_per_ip;
 
 	struct pub_ip_port_set *pub_ip_port_set;
@@ -542,7 +542,7 @@ struct cgnapt_table_entry *napt_hash_tbl_entries;
  * A structure defining public ip and associated port range set
  */
 struct pub_ip_port_set {
-	uint32_t ip;
+	uint32_t ip;//指定某ip的start-port到end-port
 	uint16_t start_port;
 	uint16_t end_port;
 };

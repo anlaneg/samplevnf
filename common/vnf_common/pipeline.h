@@ -30,9 +30,9 @@ typedef void* (*pipeline_fe_op_init)(struct pipeline_params *params, void *arg);
 typedef int (*pipeline_fe_op_free)(void *pipeline);
 
 struct pipeline_fe_ops {
-	pipeline_fe_op_init f_init;
+	pipeline_fe_op_init f_init;//pipeline前端初始化
 	pipeline_fe_op_free f_free;
-	cmdline_parse_ctx_t *cmds;
+	cmdline_parse_ctx_t *cmds;//pipeline对应的命令行
 };
 
 /*

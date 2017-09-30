@@ -62,6 +62,7 @@ enum pipeline_log_level {
 	PIPELINE_LOG_LEVELS
 };
 
+//如果pipeline的log级别大于level，则输出此日志
 #define PLOG(p, level, fmt, ...)					\
 do {									\
 	if (p->log_level >= PIPELINE_LOG_LEVEL_ ## level)		\
