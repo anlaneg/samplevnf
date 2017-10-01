@@ -87,6 +87,7 @@ pipeline_run(void *pipeline)
 	struct pipeline_master *p = (struct pipeline_master *) pipeline;
 	int status;
 
+	//如果脚本文件未执行，则cmdline_new
 	if (p->script_file_done == 0) {
 		struct app_params *app = p->app;
 		int fd = open(app->script_file, O_RDONLY);
