@@ -1170,6 +1170,7 @@ app_init_pipelines(struct app_params *app)
 		app_pipeline_params_get(app, params, &pp);
 
 		/* Back-end */
+		//各pipeline后端初始化
 		data->be = NULL;
 		if (ptype->be_ops->f_init) {
 			data->be = ptype->be_ops->f_init(&pp, (void *) app);

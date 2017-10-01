@@ -43,8 +43,8 @@ struct pipeline {
 	uint32_t port_in_id[PIPELINE_MAX_PORT_IN];
 	uint32_t port_out_id[PIPELINE_MAX_PORT_OUT];
 	uint32_t table_id[PIPELINE_MAX_TABLES];
-	struct rte_ring *msgq_in[PIPELINE_MAX_MSGQ_IN];
-	struct rte_ring *msgq_out[PIPELINE_MAX_MSGQ_OUT];
+	struct rte_ring *msgq_in[PIPELINE_MAX_MSGQ_IN];//pipeline上收到的消息
+	struct rte_ring *msgq_out[PIPELINE_MAX_MSGQ_OUT];//pipeline上需要发送的消息
 
 	uint32_t n_ports_in;//inport数目
 	uint32_t n_ports_out;
@@ -62,6 +62,7 @@ enum pipeline_log_level {
 	PIPELINE_LOG_LEVELS
 };
 
+//如果pipeline的log级别大于level，则输出此日志
 #define PLOG(p, level, fmt, ...)					\
 do {									\
 	if (p->log_level >= PIPELINE_LOG_LEVEL_ ## level)		\
@@ -82,6 +83,7 @@ pipeline_msg_recv(struct pipeline *p,
 	return msg;
 }
 
+//对外发送msg
 static inline void
 pipeline_msg_send(struct pipeline *p,
 	uint32_t msgq_id,

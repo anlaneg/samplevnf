@@ -193,8 +193,9 @@ struct app_pipeline_params {
 	char *name;
 	uint8_t parsed;
 
-	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型
+	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型（来源于type配置项）
 
+	//来源于core配置项
 	uint32_t socket_id;
 	uint32_t core_id;
 	uint32_t hyper_th_id;
@@ -221,7 +222,7 @@ struct app_pipeline_data {
 	void *fe;
 	struct pipeline_type *ptype;
 	uint64_t timer_period;
-	uint32_t enabled;
+	uint32_t enabled;//检查是否启用
 };
 
 struct app_thread_pipeline_data {
@@ -483,8 +484,10 @@ struct app_params {
 	uint32_t n_cmds;
 };
 
+//检查obj的name成员是否不为null
 #define APP_PARAM_VALID(obj) ((obj)->name != NULL)
 
+//返回n_objs,获知obj_array中有效元素数目
 #define APP_PARAM_COUNT(obj_array, n_objs)				\
 {									\
 	size_t i;							\
@@ -495,6 +498,7 @@ struct app_params {
 			n_objs++;					\
 }
 
+//与obj的name成员比对，返回与key相同的obj索引，如果不存在返回－ENOENT
 #define APP_PARAM_FIND(obj_array, key)					\
 ({									\
 	ssize_t obj_idx;						\
@@ -510,6 +514,7 @@ struct app_params {
 	obj_idx < obj_count ? obj_idx : -ENOENT;			\
 })
 
+//通过id构造name,然后查找对应的obj,如果找到采用obj返回，找不到，返回NULL
 #define APP_PARAM_FIND_BY_ID(obj_array, prefix, id, obj)		\
 do {									\
 	char name[APP_PARAM_NAME_SIZE];					\
@@ -520,6 +525,7 @@ do {									\
 	obj = (pos < 0) ? NULL : &((obj_array)[pos]);			\
 } while (0)
 
+//自name中解析出id
 #define APP_PARAM_GET_ID(obj, prefix, id)				\
 do									\
 	sscanf(obj->name, prefix "%" SCNu32, &id);				\
@@ -548,6 +554,7 @@ while (0)								\
 	obj_idx;							\
 })
 
+//如果表达式为假，则输出日志，并abort
 #define	APP_CHECK(exp, fmt, ...)					\
 do {									\
 	if (!(exp)) {							\

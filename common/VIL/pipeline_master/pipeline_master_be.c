@@ -87,7 +87,7 @@ pipeline_run(void *pipeline)
 	struct pipeline_master *p = (struct pipeline_master *) pipeline;
 	int status;
 
-	//如果脚本文件未执行，则cmdline_new
+	//未执行脚本，则打开脚本文件，并执行
 	if (p->script_file_done == 0) {
 		struct app_params *app = p->app;
 		int fd = open(app->script_file, O_RDONLY);
@@ -122,7 +122,7 @@ pipeline_run(void *pipeline)
 static int
 pipeline_timer(__rte_unused void *pipeline)
 {
-	rte_timer_manage();
+	rte_timer_manage();//处理定时器
 	return 0;
 }
 

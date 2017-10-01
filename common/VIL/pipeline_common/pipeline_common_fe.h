@@ -30,11 +30,14 @@
 #define MSG_TIMEOUT_DEFAULT                      1000
 #endif
 struct app_link_params mylink[APP_MAX_LINKS];
+
+//取指定pipe的参数
 static inline struct app_pipeline_data *
 app_pipeline_data(struct app_params *app, uint32_t id)
 {
 	struct app_pipeline_params *params;
 
+	//取PIPELINE$id的配置参数
 	APP_PARAM_FIND_BY_ID(app->pipeline_params, "PIPELINE", id, params);
 	if (params == NULL)
 		return NULL;
@@ -42,6 +45,7 @@ app_pipeline_data(struct app_params *app, uint32_t id)
 	return &app->pipeline_data[params - app->pipeline_params];
 }
 
+//取指定pipe的前端
 static inline void *
 app_pipeline_data_fe(struct app_params *app, uint32_t id, struct pipeline_type *ptype)
 {
@@ -51,6 +55,7 @@ app_pipeline_data_fe(struct app_params *app, uint32_t id, struct pipeline_type *
 	if (pipeline_data == NULL)
 		return NULL;
 
+	//pipeline类型需要一致
 	if (strcmp(pipeline_data->ptype->name, ptype->name) != 0)
 		return NULL;
 
@@ -60,6 +65,7 @@ app_pipeline_data_fe(struct app_params *app, uint32_t id, struct pipeline_type *
 	return pipeline_data->fe;
 }
 
+//获取对应某个pipeline对应的msg队列
 static inline struct rte_ring *
 app_pipeline_msgq_in_get(struct app_params *app,
 	uint32_t pipeline_id)
@@ -105,6 +111,7 @@ app_msg_free(__rte_unused struct app_params *app,
 	rte_free(msg);
 }
 
+//向某个pipeline_id收队列发送消息
 static inline void
 app_msg_send(struct app_params *app,
 	uint32_t pipeline_id,
@@ -114,16 +121,19 @@ app_msg_send(struct app_params *app,
 	int status;
 
 	do {
+		//向此队列加入消息
 		status = rte_ring_sp_enqueue(r, msg);
 	} while (status == -ENOBUFS);
 }
 
+//自某个pipeline_id对应的发队列，取出消息
 static inline void *
 app_msg_recv(struct app_params *app,
 	uint32_t pipeline_id)
 {
 	struct rte_ring *r = app_pipeline_msgq_out_get(app, pipeline_id);
 	void *msg;
+	//取出消息
 	int status = rte_ring_sc_dequeue(r, &msg);
 
 	if (status != 0)
@@ -132,6 +142,7 @@ app_msg_recv(struct app_params *app,
 	return msg;
 }
 
+//向指定pipeline发送消息，并获取响应
 static inline void *
 app_msg_send_recv(struct app_params *app,
 	uint32_t pipeline_id,
@@ -152,6 +163,7 @@ app_msg_send_recv(struct app_params *app,
 	} while (status == -ENOBUFS);
 
 	/* recv */
+	//按超时时间等待
 	deadline = (timeout_ms) ?
 		(rte_rdtsc() + ((hz * timeout_ms) / 1000)) :
 		UINT64_MAX;

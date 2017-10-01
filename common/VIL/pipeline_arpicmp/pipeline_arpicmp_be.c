@@ -556,6 +556,7 @@ pkt_key_arpicmp(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 			((rte_be_to_cpu_16(*eth_proto) == ETH_TYPE_IPV4)
 			 && (*protocol == IP_PROTOCOL_ICMP)
 		)) {
+		//处理arp icmp报文
 		process_arpicmp_pkt(pkt, ifm_get_port(in_port_id));
 		return;
 	}
@@ -862,7 +863,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 			.burst_size = params->port_in[i].burst_size,
 		};
 
-			port_params.f_action = port_in_ah_arpicmp;
+			port_params.f_action = port_in_ah_arpicmp;//处理arp,icmp协议
 
 		int status = rte_pipeline_port_in_create(p->p,
 							 &port_params,

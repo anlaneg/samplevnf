@@ -200,7 +200,7 @@ static const struct ether_addr null_ether_addr = {
     .addr_bytes[5] = 0x00,
 };
 
-struct rte_hash *arp_hash_handle;
+struct rte_hash *arp_hash_handle;//arp表
 struct rte_hash *nd_hash_handle;
 
 void print_pkt1(struct rte_mbuf *pkt);
@@ -776,6 +776,7 @@ static int add_nd_data(struct nd_key_ipv6 *nd_key,
  *      return arp entry from table.
  *
  */
+//arp表项添加函数
 static int add_arp_data(struct arp_key_ipv4 *arp_key,
                 struct arp_entry_data *ret_arp_data) {
         int ret;
@@ -1818,6 +1819,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 	uint32_t req_tip;
 	eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
 
+	//arp报文
 	if (eth_h->ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
 		if (ARPICMP_DEBUG)
 			RTE_LOG(INFO, LIBARP, "%s, portid %u. Line %d\n\r",
@@ -1848,6 +1850,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 					((ipv4list_t *) (port->ipv4_list))->ipaddr) {
 				if (arp_h->arp_data.arp_tip == arp_h->arp_data.arp_sip) {
 					printf("gratuitous arp received\n");
+					//收到免费arp
 					populate_arp_entry(
 							(struct ether_addr *)&arp_h->arp_data.arp_sha,
 							rte_cpu_to_be_32(arp_h->arp_data.arp_sip),
@@ -1855,6 +1858,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 							DYNAMIC_ARP);
 
 				} else {
+					//丢弃掉非本接口ip
 		   if (ARPICMP_DEBUG)
 					    RTE_LOG(INFO, LIBARP,"ARP requested IP address mismatches interface IP - discarding\n");
 				}
@@ -1863,6 +1867,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 			//                               processing of replies to destination ip = this ip
 			else if (arp_h->arp_op ==
 				 rte_cpu_to_be_16(ARP_OP_REQUEST)) {
+				//arp请求
 				if (ARPICMP_DEBUG) {
 					RTE_LOG(INFO, LIBARP,
 						"%s, portid %u. Line %d\n\r",
@@ -1884,6 +1889,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 							 in_port_id, DYNAMIC_ARP);
 
 				/*build reply */
+				//构造arp响应
 				req_tip = arp_h->arp_data.arp_tip;
 				ether_addr_copy(&eth_h->s_addr, &eth_h->d_addr);
 				ether_addr_copy((struct ether_addr *)&port->macaddr[0], &eth_h->s_addr);  /**< set sender mac address*/
@@ -1936,6 +1942,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 				(struct icmp_hdr *)((char *)ip_h + sizeof(struct ipv4_hdr));
 
 		if (eth_h->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+			//收到icmp报文
 
 			if (ip_h->next_proto_id != IPPROTO_ICMP) {
 				if (ARPICMP_DEBUG) {

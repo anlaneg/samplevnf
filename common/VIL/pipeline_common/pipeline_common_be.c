@@ -158,20 +158,23 @@ pipeline_msg_req_invalid_handler(__rte_unused struct pipeline *p,
 	return rsp;
 }
 
+//处理pipeline上的消息
 int
 pipeline_msg_req_handle(struct pipeline *p)
 {
 	uint32_t msgq_id;
 
+	//一次可以处理多个消息
 	for (msgq_id = 0; msgq_id < p->n_msgq; msgq_id++) {
 		for ( ; ; ) {
 			struct pipeline_msg_req *req;
 			pipeline_msg_req_handler f_handle;
 
-			req = pipeline_msg_recv(p, msgq_id);
+			req = pipeline_msg_recv(p, msgq_id);//取请求
 			if (req == NULL)
 				break;
 
+			//取请求对应的回调函数
 			f_handle = (req->type < PIPELINE_MSG_REQS) ?
 				p->handlers[req->type] :
 				pipeline_msg_req_invalid_handler;
@@ -179,6 +182,7 @@ pipeline_msg_req_handle(struct pipeline *p)
 			if (f_handle == NULL)
 				f_handle = pipeline_msg_req_invalid_handler;
 
+			//处理消息，并发送响应
 			pipeline_msg_send(p,
 				msgq_id,
 				f_handle(p, (void *) req));
