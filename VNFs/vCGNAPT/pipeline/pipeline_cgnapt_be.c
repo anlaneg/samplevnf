@@ -8124,6 +8124,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 		}
 
 		/* traffic_type */
+		//配置了传输类型
 		if (strcmp(arg_name, "pkt_type") == 0) {
 			if (strcmp(arg_value, "ipv4") == 0) {
 				p->traffic_type = TRAFFIC_TYPE_IPV4;
@@ -8306,6 +8307,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 	p_nat->port_alloc_ring = NULL;
 
 	/* Parse arguments */
+	//解析nat对应的配置
 	if (pipeline_cgnapt_parse_args(p_nat, params))
 		return NULL;
 
@@ -8319,6 +8321,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			.offset_port_id = cgnapt_meta_offset,
 		};
 
+		//创建pipeline
 		p->p = rte_pipeline_create(&pipeline_params);
 		if (p->p == NULL) {
 			rte_free(p);
@@ -8371,15 +8374,17 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 		(ap[i]).in_port_id = i;
 
 		struct rte_pipeline_port_in_params port_params = {
+			//port的操作集
 			.ops =
 				pipeline_port_in_params_get_ops(&params->port_in
 								[i]),
+			//port创建时参数
 			.arg_create =
 				pipeline_port_in_params_convert(&params->port_in
 								[i]),
 			.f_action = cgnapt_in_port_ah_mix,
 			.arg_ah = &(ap[i]),
-			.burst_size = params->port_in[i].burst_size,
+			.burst_size = params->port_in[i].burst_size,//rx的burst_size
 		};
 
 		#ifdef PIPELINE_CGNAPT_INSTRUMENTATION
@@ -8413,6 +8418,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			}
 		}
 
+		//创建in-port
 		int status = rte_pipeline_port_in_create(p->p,
 							 &port_params,
 							 &p->port_in_id[i]);
@@ -8442,6 +8448,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			.arg_ah = NULL,
 		};
 
+		//创建out-port
 		int status = rte_pipeline_port_out_create(p->p,
 								&port_params,
 								&p->port_out_id[i]);
@@ -8455,12 +8462,13 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 
 	int pipeline_num = 0;
 	int ignore;
+	//取当前配置那个pipeline
 	ignore = sscanf(params->name, "PIPELINE%d", &pipeline_num);
 	if (ignore != 1) {
 		printf("Not able to read pipeline number\n");
 		return NULL;
 	}
-		p_nat->pipeline_num = (uint8_t) pipeline_num;
+	p_nat->pipeline_num = (uint8_t) pipeline_num;
 	register_pipeline_Qs(p_nat->pipeline_num, p);
 	set_link_map(p_nat->pipeline_num, p, p_nat->links_map);
 	set_outport_id(p_nat->pipeline_num, p, p_nat->outport_id);

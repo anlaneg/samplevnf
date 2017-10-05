@@ -395,7 +395,7 @@ struct pipeline_cgnapt {
 	uint64_t arpicmpPktCount;
 
 	uint64_t app_params_addr;
-	uint8_t pipeline_num;
+	uint8_t pipeline_num;//pipeline编号
 	uint8_t pkt_burst_cnt;
 	uint8_t hw_checksum_reqd;
 	uint8_t traffic_type;

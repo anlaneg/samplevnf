@@ -1289,9 +1289,9 @@ static void app_pipeline_params_get(struct app_params *app,
 		case APP_PKTQ_IN_HWQ:
 		{
 			struct app_pktq_hwq_in_params *p_hwq_in =
-				&app->hwq_in_params[in->id];
+				&app->hwq_in_params[in->id];//取in对应的配置参数
 			struct app_link_params *p_link =
-				app_get_link_for_rxq(app, p_hwq_in);
+				app_get_link_for_rxq(app, p_hwq_in);//收队列对应的接口配置
 			uint32_t rxq_link_id, rxq_queue_id;
 
 			int status =
@@ -1303,19 +1303,21 @@ static void app_pipeline_params_get(struct app_params *app,
 				"init error (%" PRId32 ")\n",
 				p_hwq_in->name, rxq_link_id, status);
 
+			//构造in-port的配置参数
 			out->type = PIPELINE_PORT_IN_ETHDEV_READER;
-			out->params.ethdev.port_id = p_link->pmd_id;
+			out->params.ethdev.port_id = p_link->pmd_id;//取哪个port的那个队列
 			out->params.ethdev.queue_id = rxq_queue_id;
 			out->burst_size = p_hwq_in->burst;
 			break;
 		}
-		case APP_PKTQ_IN_SWQ:
+		case APP_PKTQ_IN_SWQ://实现软件队列
 		{
 			struct app_pktq_swq_params *swq_params =
 				&app->swq_params[in->id];
 
 			if ((swq_params->ipv4_frag == 0) &&
 				(swq_params->ipv6_frag == 0)) {
+				//没有开启分片功能时
 				if (app_swq_get_readers(app,
 					swq_params) == 1) {
 					out->type =
@@ -1331,6 +1333,7 @@ static void app_pipeline_params_get(struct app_params *app,
 				out->burst_size = swq_params->burst_read;
 				}
 			} else {
+				//开启分片功能时，走分片功能
 				if (swq_params->ipv4_frag == 1) {
 				struct rte_port_ring_reader_ipv4_frag_params
 					*params =
@@ -1377,6 +1380,7 @@ static void app_pipeline_params_get(struct app_params *app,
 			out->burst_size = app->tm_params[in->id].burst_read;
 			break;
 		case APP_PKTQ_IN_SOURCE:
+			//可以从pcap文件中读取
 			mempool_id = app->source_params[in->id].mempool_id;
 			out->type = PIPELINE_PORT_IN_SOURCE;
 			out->params.source.mempool = app->mempool[mempool_id];
@@ -1411,35 +1415,38 @@ static void app_pipeline_params_get(struct app_params *app,
 		struct app_pktq_out_params *in = &p_in->pktq_out[i];
 		struct pipeline_port_out_params *out = &p_out->port_out[i];
 
+		//针对每个pktq_out的配置，取其类型及其配置参数
 		switch (in->type) {
-		case APP_PKTQ_OUT_HWQ:
+		case APP_PKTQ_OUT_HWQ://输出到硬件队列
 		{
 			struct app_pktq_hwq_out_params *p_hwq_out =
-				&app->hwq_out_params[in->id];
+				&app->hwq_out_params[in->id];//取其配置参数
 			struct app_link_params *p_link =
-				app_get_link_for_txq(app, p_hwq_out);
+				app_get_link_for_txq(app, p_hwq_out);//取txq要求的link
 			uint32_t txq_link_id, txq_queue_id;
 
 			int status =
 			sscanf(p_hwq_out->name,
 				"TXQ%" SCNu32 ".%" SCNu32,
 				&txq_link_id,
-				&txq_queue_id);
+				&txq_queue_id);//取要求配置的link-id,queue-id
 			if(status < 0)
 				rte_panic("%s (%" PRId32 "): "
 				"init error (%" PRId32 ")\n",
 				p_hwq_out->name, txq_link_id, status);
 
 			if (p_hwq_out->dropless == 0) {
+				//不尽最大可能的不丢包模式
 				struct rte_port_ethdev_writer_params *params =
 					&out->params.ethdev;
 
 				out->type = PIPELINE_PORT_OUT_ETHDEV_WRITER;
-				params->port_id = p_link->pmd_id;
-				params->queue_id = txq_queue_id;
+				params->port_id = p_link->pmd_id;//填充port-id
+				params->queue_id = txq_queue_id;//发送的queue-id
 				params->tx_burst_sz =
 					app->hwq_out_params[in->id].burst;
 			} else {
+				//尽最大可能的不丢包
 				struct rte_port_ethdev_writer_nodrop_params
 					*params = &out->params.ethdev_nodrop;
 
@@ -1455,10 +1462,11 @@ static void app_pipeline_params_get(struct app_params *app,
 		case APP_PKTQ_OUT_SWQ:
 		{
 		struct app_pktq_swq_params *swq_params =
-			&app->swq_params[in->id];
+			&app->swq_params[in->id];//取参数
 
 		if ((swq_params->ipv4_ras == 0) &&
 			(swq_params->ipv6_ras == 0)) {
+			//不开启分片重组功能
 			if (app_swq_get_writers(app, swq_params) == 1) {
 				if (app->swq_params[in->id].dropless == 0) {
 				struct rte_port_ring_writer_params *params =
@@ -1504,6 +1512,7 @@ static void app_pipeline_params_get(struct app_params *app,
 				}
 				}
 			} else {
+			//没有发送成功的包，将被丢弃
 			if (swq_params->ipv4_ras == 1) {
 				struct rte_port_ring_writer_ipv4_ras_params
 					*params =
@@ -1536,7 +1545,7 @@ static void app_pipeline_params_get(struct app_params *app,
 				app->tm_params[in->id].burst_write;
 			break;
 		}
-		case APP_PKTQ_OUT_SINK:
+		case APP_PKTQ_OUT_SINK://向pcap文件中写报文
 			out->type = PIPELINE_PORT_OUT_SINK;
 			if (app->sink_params[in->id].file_name != NULL) {
 				out->params.sink.file_name = strdup(
@@ -1597,6 +1606,7 @@ app_init_pipelines(struct app_params *app)
 			rte_panic("Init error: Unknown pipeline type \"%s\"\n",
 				params->type);
 
+		//dpdk定义了一些实用的虚拟port,这里我们将我们的配直转换为这些虚拟port的配置
 		app_pipeline_params_get(app, params, &pp);
 
 		/* Back-end */

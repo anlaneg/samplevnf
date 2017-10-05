@@ -81,8 +81,8 @@ struct app_pktq_hwq_out_params {
 	uint32_t parsed;
 	uint32_t size;
 	uint32_t burst;
-	uint32_t dropless;
-	uint64_t n_retries;
+	uint32_t dropless;//尽可能的不丢包
+	uint64_t n_retries;//如果发送失败，最大尝试重发次数
 	struct rte_eth_txconf conf;
 };
 
@@ -162,12 +162,12 @@ enum app_pktq_in_type {
 };
 
 struct app_pktq_in_params {
-	enum app_pktq_in_type type;
+	enum app_pktq_in_type type;//类型
 	uint32_t id; /* Position in the appropriate app array */
 };
 
 enum app_pktq_out_type {
-	APP_PKTQ_OUT_HWQ,
+	APP_PKTQ_OUT_HWQ,//输出到硬件队列
 	APP_PKTQ_OUT_SWQ,
 	APP_PKTQ_OUT_TM,
 	APP_PKTQ_OUT_SINK,
@@ -290,6 +290,7 @@ struct app_eal_params {
 	char *pci_blacklist[APP_MAX_LINKS];
 
 	/* Add a PCI device in white list. */
+	//白名单列表
 	char *pci_whitelist[APP_MAX_LINKS];
 
 	/* Add a virtual device. */
@@ -435,7 +436,7 @@ struct app_params {
 	const char *script_file;//脚本文件 (-s参数给出）
 	const char *parser_file;//如果需要预处理，则parser_file由config_file加后缀生成，否则等于config_file
 	const char *output_file;//最终配置文件（输出用,由config_file加后缀生成）
-	const char *preproc;//(通过--preproc给出）
+	const char *preproc;//预处理命令(通过--preproc给出）
 	const char *preproc_args;//（通过--preproc-args给出）
 	uint64_t port_mask;//通过(-p参数给出）
 	uint32_t log_level;//通过(-l参数给出）
@@ -770,7 +771,7 @@ app_txq_get_writers(struct app_params *app, struct app_pktq_hwq_out_params *txq)
 static inline uint32_t
 app_swq_get_writers(struct app_params *app, struct app_pktq_swq_params *swq)
 {
-	uint32_t pos = swq - app->swq_params;
+	uint32_t pos = swq - app->swq_params;//取索引
 	uint32_t n_pipelines = RTE_MIN(app->n_pipelines,
 		RTE_DIM(app->pipeline_params));
 	uint32_t n_writers = 0, i;
@@ -895,6 +896,7 @@ app_msgq_get_writers(struct app_params *app, struct app_msgq_params *msgq)
 	return n_writers;
 }
 
+//取收接口配置
 static inline struct app_link_params *
 app_get_link_for_rxq(struct app_params *app, struct app_pktq_hwq_in_params *p)
 {
@@ -902,6 +904,7 @@ app_get_link_for_rxq(struct app_params *app, struct app_pktq_hwq_in_params *p)
 	ssize_t link_param_idx;
 	uint32_t rxq_link_id, rxq_queue_id;
 
+	//RXQ<rxq-link-id>.<rxq_queue_id>
 	sscanf(p->name, "RXQ%" SCNu32 ".%" SCNu32,
 		&rxq_link_id, &rxq_queue_id);
 	sprintf(link_name, "LINK%" PRIu32, rxq_link_id);
@@ -912,6 +915,7 @@ app_get_link_for_rxq(struct app_params *app, struct app_pktq_hwq_in_params *p)
 	return &app->link_params[link_param_idx];
 }
 
+//获取配置要求的txq的link的参数
 static inline struct app_link_params *
 app_get_link_for_txq(struct app_params *app, struct app_pktq_hwq_out_params *p)
 {
@@ -919,6 +923,7 @@ app_get_link_for_txq(struct app_params *app, struct app_pktq_hwq_out_params *p)
 	ssize_t link_param_idx;
 	uint32_t txq_link_id, txq_queue_id;
 
+	//TXQ<txq_link_id>.<txq_queue_id>
 	sscanf(p->name, "TXQ%" SCNu32 ".%" SCNu32,
 		&txq_link_id, &txq_queue_id);
 	sprintf(link_name, "LINK%" PRIu32, txq_link_id);

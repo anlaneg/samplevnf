@@ -220,6 +220,7 @@ app_print_usage(char *prgname)
 	rte_exit(0, app_usage, prgname, app_params_default.config_file);
 }
 
+//跳过next前导的空白符
 #define skip_white_spaces(pos)			\
 ({						\
 	__typeof__(pos) _p = (pos);		\
@@ -521,19 +522,23 @@ skip_digits(const char *src)
 	return i;
 }
 
+//number是用于区分不同匹配类型
 static int
 validate_name(const char *name, const char *prefix, int num)
 {
 	size_t i, j;
 
+	//检查name与prefix是否匹配
 	for (i = 0; (name[i] != '\0') && (prefix[i] != '\0'); i++) {
 		if (name[i] != prefix[i])
 			return -1;
 	}
 
+	//prefix过长情况，不匹配
 	if (prefix[i] != '\0')
 		return -1;
 
+	//如果num等于0，则要求name与prefix完全匹配
 	if (!num) {
 		if (name[i] != '\0')
 			return -1;
@@ -542,16 +547,20 @@ validate_name(const char *name, const char *prefix, int num)
 	}
 
 	if (num == 2) {
+		//从name[i]位置算起
 		j = skip_digits(&name[i]);
 		i += j;
+		//如果剩余的非'.'或者j=0,则认为不匹配
 		if ((j == 0) || (name[i] != '.'))
 			return -1;
 		i++;
 	}
 
 	if (num == 1) {
+		//从name位置开始，检查有多少个数字
 		j = skip_digits(&name[i]);
 		i += j;
+		//如果有剩有非数字，或者j=0，则认为不匹配
 		if ((j == 0) || (name[i] != '\0'))
 			return -1;
 	}
@@ -700,6 +709,7 @@ parse_eal(struct app_params *app,
 				if (p->pci_whitelist[i])
 					continue;
 
+				//填充未用的白名单
 				p->pci_whitelist[i] = strdup(entry->value);
 				PARSE_ERROR_MALLOC(p->pci_whitelist[i]);
 
@@ -1117,7 +1127,7 @@ parse_pipeline_pktq_in(struct app_params *app,
 {
 	const char *next = value;
 	if(next == NULL)
-		return -EINVAL;
+		return -EINVAL;//值为空，报错
 	char *end;
 	char name[APP_PARAM_NAME_SIZE];
 	size_t name_len;
@@ -1128,26 +1138,29 @@ parse_pipeline_pktq_in(struct app_params *app,
 		char *end_space;
 		char *end_tab;
 		 if(next != NULL)
-		next = skip_white_spaces(next);
+		next = skip_white_spaces(next);//跳过前导的空格
 		if (!next)
 			break;
 
+		//查找结尾（定义为tab或者space)
 		end_space = strchr(next, ' ');
 		end_tab = strchr(next, '	');
 
+		//由于end_space,end_tab都能分割配置，这里看谁生效。
 		if (end_space && (!end_tab))
-			end = end_space;//没有tab,有end_space，直接更新end
+			end = end_space;//没有tab,有end_space，用end_space
 		else if ((!end_space) && end_tab)
-			end = end_tab;//没有end_space,但有end_tab,直接更新end
+			end = end_tab;//没有end_space,但有end_tab,用end_tab
 		else if (end_space && end_tab)
-			end = RTE_MIN(end_space, end_tab);//为什么不用RTE_MAX?
+			//如果两者都有，谁更靠前，用谁
+			end = RTE_MIN(end_space, end_tab);
 		else
-			end = NULL;
+			end = NULL;//两者均没有，则仅一个配置，到行尾
 
 		if (!end)
-			name_len = strlen(next);
+			name_len = strlen(next);//数据长度为，整行长度
 		else
-			name_len = end - next;
+			name_len = end - next;//数据长度，到end截止。
 
 		if (name_len == 0 || name_len == sizeof(name))
 			return -EINVAL;
@@ -1156,18 +1169,22 @@ parse_pipeline_pktq_in(struct app_params *app,
 		name[name_len] = '\0';
 		next += name_len;
 		if (*next != '\0')
-			next++;
+			next++;//准备下次循环
 
 		if (validate_name(name, "RXQ", 2) == 0) {
+			//RXQ2.x
 			type = APP_PKTQ_IN_HWQ;
 			id = APP_PARAM_ADD(app->hwq_in_params, name);
 		} else if (validate_name(name, "SWQ", 1) == 0) {
+			//SWQ2
 			type = APP_PKTQ_IN_SWQ;
 			id = APP_PARAM_ADD(app->swq_params, name);
 		} else if (validate_name(name, "TM", 1) == 0) {
+			//TM2
 			type = APP_PKTQ_IN_TM;
 			id = APP_PARAM_ADD(app->tm_params, name);
 		} else if (validate_name(name, "SOURCE", 1) == 0) {
+			//SOURCE2
 			type = APP_PKTQ_IN_SOURCE;
 			id = APP_PARAM_ADD(app->source_params, name);
 		} else
@@ -1178,12 +1195,13 @@ parse_pipeline_pktq_in(struct app_params *app,
 
 		p->pktq_in[p->n_pktq_in].type = type;
 		p->pktq_in[p->n_pktq_in].id = (uint32_t) id;
-		p->n_pktq_in++;
+		p->n_pktq_in++;//in 队列增加
 	}
 
 	return 0;
 }
 
+//与pktq_in的解析过程大致相同
 static int
 parse_pipeline_pktq_out(struct app_params *app,
 	struct app_pipeline_params *p,
@@ -1412,6 +1430,7 @@ parse_pipeline(struct app_params *app,
 		struct rte_cfgfile_entry *ent = &entries[i];//取配置项
 
 		if (strcmp(ent->name, "type") == 0) {
+			//填充pipeline type
 			int w_size = snprintf(param->type, RTE_DIM(param->type),
 					"%s", ent->value);
 
@@ -1433,6 +1452,7 @@ parse_pipeline(struct app_params *app,
 			continue;
 		}
 
+		//解析pktq_in配置
 		if (strcmp(ent->name, "pktq_in") == 0) {
 			int status = parse_pipeline_pktq_in(app, param,
 				ent->value);
@@ -1442,6 +1462,7 @@ parse_pipeline(struct app_params *app,
 			continue;
 		}
 
+		//解析pktq_out配置
 		if (strcmp(ent->name, "pktq_out") == 0) {
 			int status = parse_pipeline_pktq_out(app, param,
 				ent->value);
@@ -2503,10 +2524,12 @@ create_implicit_mempools(struct app_params *app)
 {
 	ssize_t idx;
 
+	//如果mempool0已添加，则返回idx,否则添加此名称
 	idx = APP_PARAM_ADD(app->mempool_params, "MEMPOOL0");
 	PARSER_PARAM_ADD_CHECK(idx, app->mempool_params, "start-up");
 }
 
+//依据port_mask指定，创建对应的port(pmd_id与之对应），但创建的link按顺序编号
 static void
 create_implicit_links_from_port_mask(struct app_params *app,
 	uint64_t port_mask)
@@ -3170,7 +3193,7 @@ app_config_save(struct app_params *app, const char *file_name)
 	free(name);
 }
 
-//初始化默认配置
+//初始化默认配置,取各默认常量
 int
 app_config_init(struct app_params *app)
 {
@@ -3282,7 +3305,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "f:s:p:l:", lgopts,
 			&option_index)) != EOF)
 		switch (opt) {
-		case 'f':
+		case 'f'://配置文件
 			if (f_present)//f只容许出现一次
 				rte_panic("Error: Config file is provided "
 					"more than once\n");
@@ -3297,7 +3320,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 			break;
 
-		case 's':
+		case 's'://脚本文件
 			if (s_present)
 				rte_panic("Error: Script file is provided "
 					"more than once\n");
@@ -3388,6 +3411,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 				break;
 			}
 
+			//预处理命令
 			if (strcmp(optname, "preproc") == 0) {
 				if (preproc_present)
 					rte_panic("Error: Preprocessor argument "
@@ -3398,6 +3422,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 				break;
 			}
 
+			//预处理命令参数
 			if (strcmp(optname, "preproc-args") == 0) {
 				if (preproc_params_present)
 					rte_panic("Error: Preprocessor args "

@@ -72,23 +72,24 @@ pipeline_port_in_params_convert(struct pipeline_port_in_params  *p)
 	}
 }
 
+//依据in-port类型，获取对应的操作集
 static inline struct rte_port_in_ops *
 pipeline_port_in_params_get_ops(struct pipeline_port_in_params  *p)
 {
 	switch (p->type) {
 	case PIPELINE_PORT_IN_ETHDEV_READER:
 		return &rte_port_ethdev_reader_ops;
-	case PIPELINE_PORT_IN_RING_READER:
+	case PIPELINE_PORT_IN_RING_READER://单读者ring
 		return &rte_port_ring_reader_ops;
-	case PIPELINE_PORT_IN_RING_MULTI_READER:
+	case PIPELINE_PORT_IN_RING_MULTI_READER://多读者的ring
 		return &rte_port_ring_multi_reader_ops;
-	case PIPELINE_PORT_IN_RING_READER_IPV4_FRAG:
+	case PIPELINE_PORT_IN_RING_READER_IPV4_FRAG://ipv4分片
 		return &rte_port_ring_reader_ipv4_frag_ops;
-	case PIPELINE_PORT_IN_RING_READER_IPV6_FRAG:
+	case PIPELINE_PORT_IN_RING_READER_IPV6_FRAG://ipv6分片
 		return &rte_port_ring_reader_ipv6_frag_ops;
 	case PIPELINE_PORT_IN_SCHED_READER:
 		return &rte_port_sched_reader_ops;
-	case PIPELINE_PORT_IN_SOURCE:
+	case PIPELINE_PORT_IN_SOURCE://目前支持从pcap中收取报文
 		return &rte_port_source_ops;
 	default:
 		return NULL;
@@ -160,16 +161,16 @@ pipeline_port_out_params_get_ops(struct pipeline_port_out_params  *p)
 	case PIPELINE_PORT_OUT_ETHDEV_WRITER:
 		return &rte_port_ethdev_writer_ops;
 	case PIPELINE_PORT_OUT_ETHDEV_WRITER_NODROP:
-		return &rte_port_ethdev_writer_nodrop_ops;
+		return &rte_port_ethdev_writer_nodrop_ops;//尽可能的不丢报文
 	case PIPELINE_PORT_OUT_RING_WRITER:
 		return &rte_port_ring_writer_ops;
 	case PIPELINE_PORT_OUT_RING_MULTI_WRITER:
-		return &rte_port_ring_multi_writer_ops;
+		return &rte_port_ring_multi_writer_ops;//多生产者方式入队
 	case PIPELINE_PORT_OUT_RING_WRITER_NODROP:
-		return &rte_port_ring_writer_nodrop_ops;
+		return &rte_port_ring_writer_nodrop_ops;//单生产者方式入队，尽最大可能不丢包
 	case PIPELINE_PORT_OUT_RING_MULTI_WRITER_NODROP:
 		return &rte_port_ring_multi_writer_nodrop_ops;
-	case PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS:
+	case PIPELINE_PORT_OUT_RING_WRITER_IPV4_RAS://ipv4分片重组功能
 		return &rte_port_ring_writer_ipv4_ras_ops;
 	case PIPELINE_PORT_OUT_RING_WRITER_IPV6_RAS:
 		return &rte_port_ring_writer_ipv6_ras_ops;
@@ -218,8 +219,8 @@ struct pipeline_params {
 	struct rte_ring *msgq_in[PIPELINE_MAX_MSGQ_IN];
 	struct rte_ring *msgq_out[PIPELINE_MAX_MSGQ_OUT];
 
-	uint32_t n_ports_in;
-	uint32_t n_ports_out;
+	uint32_t n_ports_in;//in-port数量
+	uint32_t n_ports_out;//out-port数量
 	uint32_t n_msgq;
 
 	int socket_id;
