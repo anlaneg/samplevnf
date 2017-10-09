@@ -40,18 +40,18 @@ typedef void *(*pipeline_msg_req_handler)(struct pipeline *p, void *msg);
 
 struct pipeline {
 	struct rte_pipeline *p;
-	uint32_t port_in_id[PIPELINE_MAX_PORT_IN];
+	uint32_t port_in_id[PIPELINE_MAX_PORT_IN];//in-port id号
 	uint32_t port_out_id[PIPELINE_MAX_PORT_OUT];
-	uint32_t table_id[PIPELINE_MAX_TABLES];
+	uint32_t table_id[PIPELINE_MAX_TABLES];//table id号
 	struct rte_ring *msgq_in[PIPELINE_MAX_MSGQ_IN];//pipeline上收到的消息
 	struct rte_ring *msgq_out[PIPELINE_MAX_MSGQ_OUT];//pipeline上需要发送的消息
 
 	uint32_t n_ports_in;//inport数目
-	uint32_t n_ports_out;
-	uint32_t n_tables;
-	uint32_t n_msgq;
+	uint32_t n_ports_out;//outport数目
+	uint32_t n_tables;//table数目
+	uint32_t n_msgq;//消息队列数目
 
-	pipeline_msg_req_handler handlers[PIPELINE_MSG_REQS];
+	pipeline_msg_req_handler handlers[PIPELINE_MSG_REQS];//消息处理回调
 	char name[PIPELINE_NAME_SIZE];
 	uint32_t log_level;
 };

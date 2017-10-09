@@ -824,6 +824,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 			//.offset_port_id = arp_meta_offset,
 		};
 
+		//依据参数，创建rte pipeline
 		p->p = rte_pipeline_create(&pipeline_params);
 		if (p->p == NULL) {
 			rte_free(p);
@@ -833,7 +834,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 
 	p->n_ports_in = params->n_ports_in;
 	p->n_ports_out = params->n_ports_out;
-	p->n_tables = 1;
+	p->n_tables = 1;//仅一个表
 
 	/* Memory allocation for in_port_h_arg */
 	in_ports_arg_size = RTE_CACHE_LINE_ROUNDUP(
@@ -865,6 +866,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 
 			port_params.f_action = port_in_ah_arpicmp;//处理arp,icmp协议
 
+		//创建inport
 		int status = rte_pipeline_port_in_create(p->p,
 							 &port_params,
 							 &p->port_in_id[i]);
@@ -878,6 +880,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 
 	/* Output ports */
 	for (i = 0; i < p->n_ports_out; i++) {
+		//outport对应的ops
 		struct rte_pipeline_port_out_params port_params = {
 			.ops =
 					pipeline_port_out_params_get_ops(&params->
@@ -889,6 +892,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 			.arg_ah = NULL,
 		};
 
+		//创建outport
 		int status = rte_pipeline_port_out_create(p->p,
 								&port_params,
 								&p->port_out_id[i]);
@@ -914,6 +918,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 	set_phy_outport_id(p_arp->pipeline_num, p, p_arp->outport_id);
 
 	/* Tables */
+	//创建此pipeline对应的表
 	{
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_stub_ops,
@@ -924,6 +929,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 			.action_data_size = 0,
 		};
 
+		//创建表
 		int status = rte_pipeline_table_create(p->p,
 									 &table_params,
 									 &p->table_id[0]);
@@ -936,6 +942,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 	}
 
 	/* Connecting input ports to tables */
+	//所有的in-port均与table_id[0]进行关联
 	for (i = 0; i < p->n_ports_in; i++) {
 
 		int status = rte_pipeline_port_in_connect_to_table(p->p,
@@ -954,6 +961,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 	}
 
 	/* Enable input ports */
+	//开启所有的in-port
 	for (i = 0; i < p->n_ports_in; i++) {
 		int status = rte_pipeline_port_in_enable(p->p,
 							 p->port_in_id[i]);
@@ -973,6 +981,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 	}
 
 	/* Message queues */
+	//设置消息队列
 	p->n_msgq = params->n_msgq;
 	for (i = 0; i < p->n_msgq; i++)
 		p->msgq_in[i] = params->msgq_in[i];
@@ -980,6 +989,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 		p->msgq_out[i] = params->msgq_out[i];
 
 	/* Message handlers */
+	//设置消息处理回调
 	memcpy(p->handlers, handlers, sizeof(p->handlers));
 
 	return p;

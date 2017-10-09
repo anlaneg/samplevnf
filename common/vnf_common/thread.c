@@ -228,6 +228,7 @@ app_thread(void *arg)
 		uint32_t n_custom = RTE_MIN(t->n_custom, RTE_DIM(t->custom));
 
 		/* Run regular pipelines */
+		//regular类型的run(即用户未指定pipeline的run函数）
 		for (j = 0; j < n_regular; j++) {
 			struct app_thread_pipeline_data *data = &t->regular[j];
 			struct pipeline *p = data->be;
@@ -236,6 +237,7 @@ app_thread(void *arg)
 		}
 
 		/* Run custom pipelines */
+		//custom类型的run(用䚮指定了pipeline的run函数）
 		for (j = 0; j < n_custom; j++) {
 			struct app_thread_pipeline_data *data = &t->custom[j];
 

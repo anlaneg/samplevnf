@@ -123,10 +123,10 @@ static cmdline_parse_inst_t lb_cmd_entry_dbg = {
 	.data = NULL,
 	.help_str = "TXRX dbg cmd",
 	.tokens = {
-			 (void *)&lb_cmd_entry_dbg_p_string,
-			 (void *)&lb_cmd_entry_dbg_p,
-			 (void *)&lb_cmd_entry_dbg_entry_string,
-			 (void *)&lb_cmd_entry_dbg_dbg_string,
+			 (void *)&lb_cmd_entry_dbg_p_string,//p
+			 (void *)&lb_cmd_entry_dbg_p,//pipeline id
+			 (void *)&lb_cmd_entry_dbg_entry_string,//txrx
+			 (void *)&lb_cmd_entry_dbg_dbg_string,//dbg
 			 (void *)&lb_cmd_entry_dbg_cmd,
 			 (void *)&lb_cmd_entry_dbg_d1,
 			 NULL,
@@ -141,9 +141,10 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 static struct pipeline_fe_ops pipeline_txrx_fe_ops = {
 	.f_init = NULL,
 	.f_free = NULL,
-	.cmds = pipeline_cmds,
+	.cmds = pipeline_cmds,//前端支持的命令行
 };
 
+//rxrx类型的pipeline
 struct pipeline_type pipeline_txrx = {
 	.name = "TXRX",
 	.be_ops = &pipeline_txrx_be_ops,

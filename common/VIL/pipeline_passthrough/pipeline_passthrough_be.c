@@ -649,6 +649,7 @@ pipeline_passthrough_init(struct pipeline_params *params,
 	}
 
 	/* Tables */
+	//有多少in-port就创建多少个table
 	for (i = 0; i < p->n_ports_in; i++) {
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_stub_ops,

@@ -138,7 +138,7 @@ struct rte_pipeline {
 	uint32_t offset_port_id;
 
 	/* Internal tables */
-	struct rte_port_in ports_in[RTE_PIPELINE_PORT_IN_MAX];
+	struct rte_port_in ports_in[RTE_PIPELINE_PORT_IN_MAX];//id对应的in-port
 	struct rte_port_out ports_out[RTE_PIPELINE_PORT_OUT_MAX];
 	struct rte_table tables[RTE_PIPELINE_TABLE_MAX];
 

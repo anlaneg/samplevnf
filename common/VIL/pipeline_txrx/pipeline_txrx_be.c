@@ -45,7 +45,7 @@ struct pipeline_txrx {
 	uint8_t links_map[PIPELINE_MAX_PORT_IN];
 	uint8_t outport_id[PIPELINE_MAX_PORT_IN];
 	uint8_t pipeline_num;
-	uint8_t txrx_type;
+	uint8_t txrx_type;//txrx类型
 } __rte_cache_aligned;
 
 enum{
@@ -131,6 +131,7 @@ pipeline_txrx_parse_args(struct pipeline_txrx *p,
 		printf("TXRX pipeline_txrx_parse_args params->n_args: %d\n",
 			params->n_args);
 
+	//先分析pipeline_txrx_type参数
 	for (i = 0; i < params->n_args; i++) {
 		char *arg_name = params->args_name[i];
 		char *arg_value = params->args_value[i];
@@ -142,7 +143,7 @@ pipeline_txrx_parse_args(struct pipeline_txrx *p,
 		 /* txrx_type = val */
 		if (strcmp(arg_name, "pipeline_txrx_type") == 0) {
 			if (txrx_type_present)
-				return -1;
+				return -1;//多次配置
 			 txrx_type_present = 1;
 
 
@@ -180,7 +181,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	p_txrx->receivedPktCount++;
 
 	if (p_txrx->txrx_type == TYPE_TXTX)
-		return;
+		return;//对于txtx模式，直接返回
 
 	uint8_t in_port_id = pkt->port;
 	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
@@ -189,12 +190,13 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	/* ARP outport number */
 	uint32_t out_port = p_txrx->p.n_ports_out - 1;
 
+	//这里直接采用＋12的方式，偏移到eth_proto,完全不考虑vlan等情况
 	uint16_t *eth_proto =
 			RTE_MBUF_METADATA_UINT16_PTR(pkt, eth_proto_offset);
 
 	uint8_t *protocol;
 	uint32_t prot_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
+			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;//协议的偏移也是硬编码
 
 	#ifdef IPV6
 	struct ipv6_hdr *ipv6_h;
@@ -235,7 +237,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 
 	#if 1
 	switch (rte_be_to_cpu_16(*eth_proto)) {
-	case ETH_TYPE_ARP:
+	case ETH_TYPE_ARP://如果收到的是arp报文
 		rte_pipeline_port_out_packet_insert(p_txrx->p.p,
 			out_port, pkt);
 		rte_pipeline_ah_packet_hijack(p_txrx->p.p, pkt_mask);
@@ -244,6 +246,8 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	case ETH_TYPE_IPV4:
 		if ((*protocol == IP_PROTOCOL_ICMP)  &&
 			(link->ip == rte_be_to_cpu_32(*dst_addr))) {
+			//如果收到的是ip报文，且协议为icmp，且入接口的ip与此报发送过来的ip相同
+			//即报文是要送往本地的。
 			if (is_phy_port_privte(pkt->port)) {
 				rte_pipeline_port_out_packet_insert(
 					p_txrx->p.p,
@@ -650,6 +654,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	printf("txrx initialization of variables done\n");
 
 	/* Parse arguments */
+	//解析参数
 	if (pipeline_txrx_parse_args(p_pt, params))
 		return NULL;
 
@@ -700,7 +705,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 			.burst_size = params->port_in[i].burst_size,
 		};
 
-			port_params.f_action = port_in_ah_txrx;
+			port_params.f_action = port_in_ah_txrx;//收到报后处理
 
 		int status = rte_pipeline_port_in_create(p->p,
 							 &port_params,
@@ -750,6 +755,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	set_outport_id(p_pt->pipeline_num, p, p_pt->outport_id);
 
 	/* Tables */
+	//有多少个in-port就创建多少个table
 	for (i = 0; i < p->n_ports_in; i++) {
 		struct rte_pipeline_table_params table_params = {
 			.ops = &rte_table_stub_ops,
@@ -772,6 +778,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	}
 
 	/* Connecting input ports to tables */
+	//每个in-port对应一个table
 	for (i = 0; i < p->n_ports_in; i++) {
 		int status = rte_pipeline_port_in_connect_to_table(p->p,
 									 p->
@@ -788,6 +795,8 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	}
 
 	/* Add entries to tables */
+	//为每个表添加一个表项，此表项要求发向指定port
+	//按顺序发向每个out-port
 	for (i = 0; i < p->n_ports_in; i++) {
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT,
@@ -811,6 +820,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	}
 
 	/* Enable input ports */
+	//开启所有in-port
 	for (i = 0; i < p->n_ports_in; i++) {
 		int status = rte_pipeline_port_in_enable(p->p,
 							 p->port_in_id[i]);
@@ -837,6 +847,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 		p->msgq_out[i] = params->msgq_out[i];
 
 	/* Message handlers */
+	//消息回调
 	memcpy(p->handlers, handlers, sizeof(p->handlers));
 
 	return p;

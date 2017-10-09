@@ -30,6 +30,7 @@ static struct pipeline_fe_ops pipeline_timer_fe_ops = {
 	.cmds = NULL,
 };
 
+//timer pipeline没有前端（前端是空的）
 struct pipeline_type pipeline_timer = {
 	.name = "TIMER",
 	.be_ops = &pipeline_timer_be_ops,

@@ -21,6 +21,7 @@
 
 extern uint8_t CGNAPT_DEBUG;
 
+//ip地址，端口，接口编号
 struct pipeline_cgnapt_entry_key {
 	uint32_t ip;
 	uint16_t port;		/* L4 port */

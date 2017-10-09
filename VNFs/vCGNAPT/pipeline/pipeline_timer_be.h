@@ -36,8 +36,8 @@ extern uint32_t timer_lcore;
 /* one timer entry created for pair of egress and ingress entry */
 struct timer_key {
 	struct pipeline_cgnapt_entry_key egress_key, ingress_key;
-	struct cgnapt_table_entry *egress_entry, *ingress_entry;
-	struct pipeline *p_nat;
+	struct cgnapt_table_entry *egress_entry, *ingress_entry;//ingress_key,egress_key对应的entry(用于缓存）
+	struct pipeline *p_nat;//从属于那个pipeline
 } __rte_cache_aligned;
 
 /******* Function declarations ********/

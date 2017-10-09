@@ -1160,6 +1160,7 @@ static void *pipeline_loadb_init(
 	//set_outport_id(p_loadb->pipeline_num, p, p_loadb->outport_id);
 
 	/* Tables */
+	//仅创建一个port
 	p->n_tables = 1;
 	{
 

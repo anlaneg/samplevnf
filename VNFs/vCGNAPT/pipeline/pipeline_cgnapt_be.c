@@ -3635,7 +3635,7 @@ pkt_work_cgnapt_key_ipv4_pub(
 	case IP_PROTOCOL_TCP:
 		src_port_offset = SRC_PRT_OFST_IP4_TCP;
 		dst_port_offset = DST_PRT_OFST_IP4_TCP;
-
+		//取出src,dst port
 		src_port = RTE_MBUF_METADATA_UINT16(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16(pkt, dst_port_offset);
 
@@ -3645,6 +3645,7 @@ pkt_work_cgnapt_key_ipv4_pub(
 		/* Identifier */
 		src_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 4;
+		//序列号offset
 		dst_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 6;
 
@@ -8392,6 +8393,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			instrumentation_port_in_arg = &(ap[i]);
 		#endif
 
+		//接口ipv4处理
 		if (p_nat->traffic_type == TRAFFIC_TYPE_IPV4) {
 			/* Private in-port handler */
 			/* Multiport changes */
@@ -8474,6 +8476,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 	set_outport_id(p_nat->pipeline_num, p, p_nat->outport_id);
 
 	/* Tables */
+	//仅创建一个table
 	p->n_tables = 1;
 	{
 
@@ -8521,6 +8524,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 	}
 
 	/* Connecting input ports to tables */
+	//所有in-port均关联此table
 	for (i = 0; i < p->n_ports_in; i++) {
 		int status = rte_pipeline_port_in_connect_to_table(p->p,
 									 p->port_in_id
