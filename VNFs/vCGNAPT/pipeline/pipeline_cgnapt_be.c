@@ -862,7 +862,7 @@ static uint8_t check_arp_icmp(
 	uint64_t pkt_mask,
 	struct pipeline_cgnapt *p_nat)
 {
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;//采用那种以太协议
 	uint16_t *eth_proto = RTE_MBUF_METADATA_UINT16_PTR(
 				pkt, eth_proto_offset);
 	struct app_link_params *link;
@@ -875,13 +875,14 @@ static uint8_t check_arp_icmp(
 	uint8_t *protocol;
 	uint32_t prot_offset;
 
-	link = &myApp->link_params[pkt->port];
+	link = &myApp->link_params[pkt->port];//入接口
 
 
 	switch (rte_be_to_cpu_16(*eth_proto)) {
 
-	case ETH_TYPE_ARP:
+	case ETH_TYPE_ARP://收到arp报文
 
+		//将报文交给out_port处理
 		rte_pipeline_port_out_packet_insert(
 			p_nat->p.p,
 			out_port,
@@ -911,9 +912,10 @@ static uint8_t check_arp_icmp(
 			prot_offset);
 		if ((*protocol == IP_PROTOCOL_ICMP) &&
 			link->ip == rte_be_to_cpu_32(*dst_addr)) {
+			//收到ip报文，且目的ip为入接口ip地址
 
 			if (is_phy_port_privte(pkt->port)) {
-
+				//pkt的入接口是物理口，使最后一个port为out_port
 				rte_pipeline_port_out_packet_insert(
 					p_nat->p.p, out_port, pkt);
 
@@ -1188,18 +1190,21 @@ int napt_port_alloc_init(struct pipeline_cgnapt *p_nat)
 	printf("******* p_nat->pub_ip_count:%d ***********\n",
 			 p_nat->pub_ip_count);
 	/* Initialize all public IP's ports  */
+	//初始化各pub_ip可分配的ports
 	int if_ports;
 	uint32_t max_ports_remain;
 
 	for (if_ports = 0; if_ports < p_nat->pub_ip_count; if_ports++) {
 		/* Add all available ports to the ring */
 
+		//遍历具体一个public ip的port (从start_port到end_port)
 		for (i = p_nat->pub_ip_port_set[if_ports].start_port;
 			 i <= p_nat->pub_ip_port_set[if_ports].end_port;) {
 			/* 1. Get a port alloc buffer from napt_port_pool */
 			void *portsBuf;
 
 			if (j == 0) {
+				//申请内存
 				/* get new  napt_port_alloc_elem from pool */
 				if (rte_mempool_get(napt_port_pool, &portsBuf) <
 					0) {
@@ -1215,7 +1220,7 @@ int napt_port_alloc_init(struct pipeline_cgnapt *p_nat)
 
 			int temp;
 			temp = p_nat->pub_ip_port_set[if_ports].end_port -
-				i + 1;
+				i + 1;//一共有多少个可分配的port
 			/* Check if remaining port count is greater
 			*  than or equals to bulk count, if not give
 			*  remaining count ports than giving bulk count
@@ -1230,13 +1235,14 @@ int napt_port_alloc_init(struct pipeline_cgnapt *p_nat)
 				pb->count = j + 1;
 				pb->ip_addr[j] =
 					p_nat->pub_ip_port_set[if_ports].ip;
-				pb->ports[j] = i + j;
+				pb->ports[j] = i + j;//对应的port
 				if ((i + j) == p_nat->pub_ip_port_set
 						[if_ports].end_port)
-					break;
+					break;//end_port不足max_ports_remain
 			}
 
 			/* 3. add the port alloc buffer to ring */
+			//将填充好的pb存入portsBuf中
 			if (rte_ring_enqueue(p_nat->port_alloc_ring,
 				portsBuf) != 0) {
 				printf("CGNAPT%d - Enqueue error - i %d, j %d, "
@@ -1250,7 +1256,7 @@ int napt_port_alloc_init(struct pipeline_cgnapt *p_nat)
 
 			/* reset j and advance i */
 			j = 0;
-			i += max_ports_remain;
+			i += max_ports_remain;//跳max_ports_remain个（已处理）
 		}
 	}
 
@@ -2532,6 +2538,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 	for (j = 0; j < n_pkts; j++)
 		rte_prefetch0(pkts[j]);
 
+	//提取key,准备查询
 	for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4)
 		pkt4_work_cgnapt_key_ipv4_prv(&pkts[i], i, arg, p_nat);
 
@@ -2541,6 +2548,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 	p_nat->valid_packets &= ~(p_nat->invalid_packets);
 
 	if (unlikely(p_nat->valid_packets == 0)) {
+		//无有效packets
 		/* no suitable packet for lookup */
 		printf("no suitable valid packets\n");
 		rte_pipeline_ah_packet_drop(rte_p, p_nat->invalid_packets);
@@ -2548,7 +2556,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 	}
 
 	/* lookup entries in the common napt table */
-
+	//查nat转换表
 	int lookup_result = rte_hash_lookup_bulk(
 				napt_common_table,
 				(const void **)&p_nat->key_ptrs,
@@ -2577,6 +2585,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 						[p_nat->lkup_indx[j]]);
 	}
 
+	//实现报文转换
 	for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4)
 		pkt4_work_cgnapt_ipv4_prv(pkts, i, arg, p_nat);
 
@@ -3501,9 +3510,9 @@ pkt_work_cgnapt_key_ipv4_prv(
 
 	/* bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);//协议
 
-	uint32_t src_addr = RTE_MBUF_METADATA_UINT32(pkt, SRC_ADR_OFST_IP4);
+	uint32_t src_addr = RTE_MBUF_METADATA_UINT32(pkt, SRC_ADR_OFST_IP4);//源ip
 
 	uint16_t src_port_offset;
 
@@ -3522,9 +3531,12 @@ pkt_work_cgnapt_key_ipv4_prv(
 
 	if (enable_hwlb) {
 		if (!check_arp_icmp(pkt, pkt_mask, p_nat))
+			//报文已被转到其它口，故返回
 			return;
 	}
 
+	//从check_arp_icmp可以看出进来的报文无法断定是ip报文，
+	//故这里的protocol可能是错误的
 	switch (protocol) {
 	case IP_PROTOCOL_UDP:
 	{
@@ -3710,6 +3722,7 @@ pkt_work_cgnapt_ipv4_prv(
 	#endif
 
 	/* index into hash table entries */
+	//取此报文对应的表项
 	int hash_table_entry = p_nat->lkup_indx[pkt_num];
 	/*bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
@@ -3726,7 +3739,7 @@ pkt_work_cgnapt_ipv4_prv(
 	enum PKT_TYPE pkt_type = PKT_TYPE_IPV4;
 
 	if (hash_table_entry < 0) {
-
+		//没有查找到表项，尝试着创建动态表项
 		/* try to add new entry */
 		struct rte_pipeline_table_entry *table_entry = NULL;
 
@@ -3736,10 +3749,12 @@ pkt_work_cgnapt_ipv4_prv(
 					(void *)p_nat);
 
 		if (!table_entry) {
+			//创建表项失败
 			/* ICMP Error message generation for Destination
 			 * Host unreachable
 			 */
 			if (protocol == IP_PROTOCOL_ICMP) {
+				//向对端发送目的不可达消息
 				cgnapt_icmp_pkt = pkt;
 				send_icmp_dest_unreachable_msg();
 			}
@@ -3762,6 +3777,7 @@ pkt_work_cgnapt_ipv4_prv(
 			return;
 		}
 
+		//创建动态地址成功
 		entry = (struct cgnapt_table_entry *)table_entry;
 	} else {
 		/* entry found for this packet */
@@ -3769,7 +3785,7 @@ pkt_work_cgnapt_ipv4_prv(
 	}
 
 	/*  apply napt and mac changes */
-
+	//按照entry要求实现报文变更
 	p_nat->entries[pkt_num] = &(entry->head);
 
 	uint32_t *src_addr =
@@ -3781,6 +3797,7 @@ pkt_work_cgnapt_ipv4_prv(
 	uint16_t *src_port;
 	uint16_t *dst_port;
 
+	//提取src_port,dst_port
 	switch (protocol) {
 	case IP_PROTOCOL_TCP:
 		src_port_offset = SRC_PRT_OFST_IP4_TCP;
@@ -3796,7 +3813,7 @@ pkt_work_cgnapt_ipv4_prv(
 			printf("cgnapt_ct_process: pkt_mask: % "PRIu64", "
 				"pkt_num: %d\n", pkt_mask, pkt_num);
 			#endif
-
+			//连接跟踪alg处理
 			pkt_mask =  cgnapt_ct_process(cgnat_cnxn_tracker, pkts,
 				pkt_mask, &ct_helper);
 		}
@@ -3830,6 +3847,7 @@ pkt_work_cgnapt_ipv4_prv(
 	uint32_t dest_address = 0;
 
 	/* Egress */
+	//丢掉udp,目的端口为53的报文(DNS报文）
 	if (unlikely(protocol == IP_PROTOCOL_UDP
 				&& rte_be_to_cpu_16(*dst_port) == 53)) {
 		p_nat->invalid_packets |= pkt_mask;
@@ -3845,8 +3863,8 @@ pkt_work_cgnapt_ipv4_prv(
 	uint32_t nhip = 0;
 	struct arp_entry_data *ret_arp_data = NULL;
 	ret_arp_data = get_dest_mac_addr_port(dest_address,
-		 &dest_if, (struct ether_addr *)eth_dest);
-	*outport_id = p_nat->outport_id[dest_if];
+		 &dest_if, (struct ether_addr *)eth_dest);//取出arp选项
+	*outport_id = p_nat->outport_id[dest_if];//存放出接口
 
 	if (arp_cache_dest_mac_present(dest_if)) {
 		ether_addr_copy(get_link_hw_addr(dest_if),(struct ether_addr *)eth_src);
@@ -3899,13 +3917,13 @@ pkt_work_cgnapt_ipv4_prv(
 
 	{
 		/* Egress */
-		*src_addr = rte_bswap32(entry->data.pub_ip);
+		*src_addr = rte_bswap32(entry->data.pub_ip);//改src-ip地址
 
 
 		#ifdef NAT_ONLY_CONFIG_REQ
 		if (!nat_only_config_flag) {
 		#endif
-			*src_port = rte_bswap16(entry->data.pub_port);
+			*src_port = rte_bswap16(entry->data.pub_port);//改源port
 		#ifdef NAT_ONLY_CONFIG_REQ
 		}
 		#endif
@@ -4043,7 +4061,7 @@ pkt_work_cgnapt_ipv4_prv(
 
 	p_nat->naptedPktCount++;
 
-	#ifdef CHECKSUM_REQ
+	#ifdef CHECKSUM_REQ //计算校验和
 		if (p_nat->hw_checksum_reqd)
 			hw_checksum(pkt, pkt_type);
 		else
@@ -7190,6 +7208,7 @@ static int cgnapt_in_port_ah_ipv6_pub(struct rte_pipeline *rte_p,
  * Function to send ICMP dest unreachable msg
  *
  */
+//向cgnat_icmp_pkt报文指向的源端发送目的不可达
 void send_icmp_dest_unreachable_msg(void)
 {
 
@@ -7273,12 +7292,12 @@ void send_icmp_dest_unreachable_msg(void)
  * @return
  *  A pointer to struct cgnapt_table_entry for added entry
  */
-
+//添加一对动态的napt实体
 struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	struct pipeline *p,
 	struct pipeline_cgnapt_entry_key *key,
 	uint32_t timeout,
-	uint8_t pkt_type,
+	uint8_t pkt_type,//报文类型
 	uint8_t *src_addr,
 	uint8_t *err)
 {
@@ -7296,6 +7315,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	}
 	#endif
 
+	//优化代码，检查是否在cache中可以命中
 	for (i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX && i < p_nat->pkt_burst_cnt;
 		 i++) {
 		if (p_nat->cgnapt_dyn_ent_table[i].ip == key->ip
@@ -7317,6 +7337,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	if (!nat_only_config_flag) {
 	#endif
 
+	//增加客户端连接计数，进行限制数量检查
 	ret = increment_max_port_counter(key->ip, key->pid, p_nat);
 	if (ret == MAX_PORT_INC_ERROR) {
 
@@ -7334,6 +7355,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 		return NULL;
 	}
 
+	//超过限制值
 	if (ret == MAX_PORT_INC_REACHED) {
 
 		#ifdef CGNAPT_DEBUGGING
@@ -7354,11 +7376,12 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	}
 	#endif
 
+	//尝试分配一个public_ip,port_num
 	uint32_t public_ip;
 	port_num = get_free_iport(p_nat, &public_ip);
 
 	if (port_num == -1) {
-
+		//分配失败
 		#ifdef CGNAPT_DBG_PRNT
 		if (CGNAPT_DEBUG > 2) {
 			printf("add_dynamic_cgnapt_entry: %d\n", port_num);
@@ -7380,7 +7403,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	#endif
 
 	if (ret == 2) {	//MPPC_NEW_ENTRY
-
+		//新建立了一个client
 		/* check for max_clients_per_ip */
 		if (rte_atomic16_read
 			(&all_public_ip
@@ -7392,7 +7415,8 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 		* In future we can think about
 		* retrying getting a new iport
 		*/
-
+		//发生超限
+		//释放为其新申请的port
 		release_iport(port_num, public_ip, p_nat);
 
 		#ifdef CGNAPT_DEBUGGING
@@ -7402,6 +7426,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 				return NULL;
 			}
 
+			//增加此public_ip对外的port使用数
 			rte_atomic16_inc(&all_public_ip
 					 [rte_jhash(&public_ip, 4, 0) %
 						CGNAPT_MAX_PUB_IP].count);
@@ -7437,13 +7462,13 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 			 },
 
 			.data = {
-				.prv_port = key->port,
-				.pub_ip = public_ip,
-				.pub_port = port_num,
+				.prv_port = key->port,//私有port
+				.pub_ip = public_ip,//转换后的ip
+				.pub_port = port_num,//转换后的port
 				.prv_phy_port = key->pid,
 				.pub_phy_port = get_pub_to_prv_port(
 						&public_ip,
-						IP_VERSION_4),
+						IP_VERSION_4),//自哪个接口出
 				.ttl = 0,
 				/* if(timeout == -1) : static entry
 				*  if(timeout == 0 ) : dynamic entry
@@ -7463,22 +7488,25 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 		}
 	#endif
 
+	//使用哪个ip协议
 	if (pkt_type == CGNAPT_ENTRY_IPV6) {
 		entry.data.type = CGNAPT_ENTRY_IPV6;
 		memcpy(&entry.data.u.prv_ipv6[0], src_addr, 16);
 	} else {
-		entry.data.u.prv_ip = key->ip;
+		entry.data.u.prv_ip = key->ip;//设置私有ip
 		entry.data.type = CGNAPT_ENTRY_IPV4;
 	}
 
 	//entry.head.port_id = CGNAPT_PUB_PORT_ID; /* outgoing port info */
+	//设置出接口
 	entry.head.port_id = entry.data.pub_phy_port; /* outgoing port info */
 
+	//设置反向流
 	struct pipeline_cgnapt_entry_key second_key;
 	/* Need to add a second ingress entry */
 	second_key.ip = public_ip;
 	second_key.port = port_num;
-	second_key.pid = 0xffff;
+	second_key.pid = 0xffff;//入接口未知
 
 	#ifdef NAT_ONLY_CONFIG_REQ
 	if (nat_only_config_flag)
@@ -7492,6 +7520,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 		second_key.pid);
 	#endif
 
+	//加入正向key
 	int32_t position = rte_hash_add_key(napt_common_table, (void *)key);
 
 	if (position < 0) {
@@ -7513,6 +7542,7 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	}
 	#endif
 
+	//设置正向的entry
 	memcpy(&napt_hash_tbl_entries[position], &entry,
 			 sizeof(struct cgnapt_table_entry));
 
@@ -7527,8 +7557,9 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 	/* outgoing port info */
 	//entry.head.port_id = CGNAPT_PRV_PORT_ID;
 	/* outgoing port info */
-	entry.head.port_id = entry.data.prv_phy_port;
+	entry.head.port_id = entry.data.prv_phy_port;//修改出接口
 
+	//设置反向流
 	int32_t position2 = rte_hash_add_key(napt_common_table, &second_key);
 
 	if (position2 < 0) {
@@ -7542,11 +7573,13 @@ struct cgnapt_table_entry *add_dynamic_cgnapt_entry(
 		return NULL;
 	}
 
+	//填充值
 	memcpy(&napt_hash_tbl_entries[position2], &entry,
 			 sizeof(struct cgnapt_table_entry));
 
 	entry_ptr = &napt_hash_tbl_entries[position2];
 
+	//将nat转换后结果，设置timer,timer什么时候会被更新？
 	timer_thread_enqueue(key, &second_key, ret_ptr,
 		entry_ptr, (struct pipeline *)p_nat);
 
@@ -7620,6 +7653,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 	/* To drop the packet */
 	uint64_t drop_mask = 0;
 
+	//如果只有静态cgnat,且没有匹配上，则直接丢掉
 	if (p_nat->is_static_cgnapt) {
 		drop_mask |= 1LLU << pkt_num;
 		p_nat->missedPktCount++;
@@ -7840,6 +7874,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 
 		if (strcmp(arg_name, "cgnapt_meta_offset") == 0) {
 			if (cgnapt_meta_offset_present) {
+				//多次配置
 				printf("CG-NAPT parse error:");
 				printf("cgnapt_meta_offset initizlized "
 				"mulitple times\n");
@@ -7850,6 +7885,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 			temp = atoi(arg_value);
 
 			if (temp > 256) {
+				//不容许超过256
 				printf("cgnapt_meta_offset is invalid :");
 				printf("Not be more than metadata size\n");
 				return -1;
@@ -8016,6 +8052,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 		}
 
 		/*  max_clients_per_ip */
+		//每个ip上最多容许多少个client
 		if (strcmp(arg_name, "max_clients_per_ip") == 0) {
 			if (max_client_present) {
 				printf("CG-NAPT parse Error: duplicate "
@@ -8506,7 +8543,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			rte_free(p);
 			return NULL;
 		}
-		//表创建成功，向表中添加一条默认表项
+		//表创建成功，向表中添加一条默认表项（nat均按规定的port_id转发）
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT_META
 		};
@@ -9024,7 +9061,7 @@ pipeline_cgnapt_msg_req_entry_addm_pair(
 			 .pub_phy_port = get_prv_to_pub_port(&dest_ip,
 						IP_VERSION_4),
 			 .ttl = ttl,
-			 .timeout = STATIC_CGNAPT_TIMEOUT,
+			 .timeout = STATIC_CGNAPT_TIMEOUT,//静态超时时间
 			 #ifdef PCP_ENABLE
 			 .timer = NULL,
 			 #endif
@@ -9406,11 +9443,13 @@ int get_free_iport(struct pipeline_cgnapt *p_nat, uint32_t *public_ip)
 	* port_alloc_ring
 	*/
 	if (p_nat->allocated_ports == NULL) {
+		//我们还没有拿到可以分配的ports
 		void *ports;
 		int ret;
 
 		ret = rte_ring_dequeue(p_nat->port_alloc_ring, &ports);
 		if (ret == 0) {
+			//出队一组可使用的ports,并缓存
 			p_nat->allocated_ports =
 				(struct napt_port_alloc_elem *)ports;
 
@@ -9424,6 +9463,7 @@ int get_free_iport(struct pipeline_cgnapt *p_nat, uint32_t *public_ip)
 						 p_nat->allocated_ports);
 			#endif
 		} else {
+			//没有空闲的port了
 			printf("CGNAPT Err - get_free_iport rte_ring_dequeue "
 			"failed");
 			printf("%d, %d, %d\n", rte_ring_count(
@@ -9445,14 +9485,16 @@ int get_free_iport(struct pipeline_cgnapt *p_nat, uint32_t *public_ip)
 	}
 
 	/* get the port from index count-1 and decrease count */
+	//分配port及public_ip
 	port = p_nat->allocated_ports->ports
 			[p_nat->allocated_ports->count - 1];
 	*public_ip = p_nat->allocated_ports->ip_addr
 			[p_nat->allocated_ports->count - 1];
 
-	p_nat->allocated_ports->count -= 1;
+	p_nat->allocated_ports->count -= 1;//可用数减1
 
 	/* if count is zero, return buffer to mem pool */
+	//可用数减为0，将allocated_ports赋空，以便下次采用出队再分配
 	if (p_nat->allocated_ports->count == 0) {
 		rte_mempool_put(napt_port_pool, p_nat->allocated_ports);
 
@@ -9582,6 +9624,7 @@ int init_max_port_per_client(
 
 	int i = 0;
 
+	//创建max_port_per_client_hash表
 	max_port_per_client_hash =
 		rte_hash_create(&max_port_per_client_hash_params);
 	if (!max_port_per_client_hash)
@@ -9657,6 +9700,7 @@ int is_max_port_per_client_reached(uint32_t prv_ip_param,
  * @return
  *  0 if max port reached, 1 if success, 2 if new entry, -1 if error
  */
+//尝试增长max_port_per_client的计数
 int increment_max_port_counter(uint32_t prv_ip_param,
 					 uint32_t prv_phy_port_param,
 					 struct pipeline_cgnapt *p_nat)
@@ -9671,9 +9715,11 @@ int increment_max_port_counter(uint32_t prv_ip_param,
 	index = rte_hash_lookup(max_port_per_client_hash, (const void *)&key);
 
 	if (index == -EINVAL)
+		//提供的参数有误
 		return MAX_PORT_INC_ERROR;
 
 	if (index == -ENOENT) {
+		//没有找到此元素，加入
 		if (max_port_per_client_add_entry(prv_ip_param,
 							prv_phy_port_param,
 							p_nat) <= 0)
@@ -9687,12 +9733,14 @@ int increment_max_port_counter(uint32_t prv_ip_param,
 			max_port_per_client_array[index].max_port_cnt,
 			p_nat->max_port_per_client);
 
+	//已存在，检查是否超限，如果未超限，则增加计数
 	if (max_port_per_client_array[index].max_port_cnt <
 		p_nat->max_port_per_client) {
 		max_port_per_client_array[index].max_port_cnt++;
 		return MAX_PORT_INC_SUCCESS;
 	}
 
+	//超限，报错
 	return MAX_PORT_INC_REACHED;
 }
 
@@ -9778,6 +9826,7 @@ int decrement_max_port_counter(uint32_t prv_ip_param,
  * @return
  *  0 no success, 1 if success, -1 if error
  */
+//检查max_port_per_clinet_hash表中是否已包含key,如果不包含，则将其加入
 int max_port_per_client_add_entry(
 	uint32_t prv_ip_param,
 	uint32_t prv_phy_port_param,
@@ -9798,6 +9847,7 @@ int max_port_per_client_add_entry(
 		return MAX_PORT_ADD_UNSUCCESS;
 
 	if (index == -ENOENT) {
+		//确实没有，加入
 
 		#ifdef CGNAPT_DBG_PRNT
 		if (CGNAPT_DEBUG > 2)
@@ -9817,11 +9867,13 @@ int max_port_per_client_add_entry(
 			"Add entry index(%d)\n", index);
 		#endif
 
+		//填充要加入的内容
 		max_port_per_client_array[index].prv_ip = prv_ip_param;
 		max_port_per_client_array[index].prv_phy_port =
 			prv_phy_port_param;
 	}
 
+	//增加计数
 	max_port_per_client_array[index].max_port_cnt++;
 	return MAX_PORT_ADD_SUCCESS;
 }

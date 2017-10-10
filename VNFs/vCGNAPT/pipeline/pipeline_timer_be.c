@@ -323,6 +323,7 @@ void cgnapt_entry_delete(struct rte_timer *timer, void *arg)
  * @return
  * 0 on success, value on failure
  */
+//timer参数解析
 static int
 pipeline_cgnapt_parse_args(struct pipeline_timer *p,
 				 struct pipeline_params *params)
@@ -347,6 +348,7 @@ pipeline_cgnapt_parse_args(struct pipeline_timer *p,
 						 atoi(arg_value), arg_value);
 		}
 
+		//每次循环处理多少个timer_key
 		if (strcmp(arg_name, "dequeue_loop_cnt") == 0) {
 			if (dequeue_loop_cnt_present)
 				return -1;
@@ -358,6 +360,7 @@ pipeline_cgnapt_parse_args(struct pipeline_timer *p,
 			continue;
 		}
 
+		//timer动态的超时时间
 		if (strcmp(arg_name, "timer_dyn_timeout") == 0) {
 			if (timer_dyn_timeout_present)
 				return -1;
@@ -368,6 +371,7 @@ pipeline_cgnapt_parse_args(struct pipeline_timer *p,
 			continue;
 		}
 
+		//需要最多支持多少流（流将被放大到2的整数次
 		if (strcmp(arg_name, "n_flows") == 0) {
 			if(n_flows_present)
 				return -1;
@@ -392,6 +396,7 @@ pipeline_cgnapt_parse_args(struct pipeline_timer *p,
 	return 0;
 }
 
+//pipeline timer所在core
 uint32_t get_timer_core_id(void)
 {
 	return timer_lcore;

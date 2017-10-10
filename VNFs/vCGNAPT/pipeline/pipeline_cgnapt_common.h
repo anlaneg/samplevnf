@@ -49,7 +49,7 @@ enum {
 #endif
 
 struct app_pipeline_cgnapt_entry_params {
-	enum cgnapt_entry_type type;
+	enum cgnapt_entry_type type;//报文类型
 	union {
 		uint32_t prv_ip;	/* private ip address */
 		uint8_t prv_ipv6[16];

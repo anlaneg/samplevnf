@@ -371,13 +371,13 @@ struct pipeline_cgnapt {
 	uint16_t max_clients_per_ip;
 
 	struct pub_ip_port_set *pub_ip_port_set;
-	uint8_t pub_ip_count;
+	uint8_t pub_ip_count;//有多少个public ip
 	struct pub_ip_range *pub_ip_range;
 	uint8_t pub_ip_range_count;
 
-	struct napt_port_alloc_elem *allocated_ports;
+	struct napt_port_alloc_elem *allocated_ports;//会优先从此变量中申请空闲port
 	struct napt_port_alloc_elem *free_ports;
-	struct rte_ring *port_alloc_ring;
+	struct rte_ring *port_alloc_ring;//保存用户配置的多个napt_port_alloc_elem
 
 	uint64_t *port_map;
 	uint16_t port_map_array_size;
@@ -402,6 +402,7 @@ struct pipeline_cgnapt {
 	uint8_t links_map[PIPELINE_MAX_PORT_IN];
 	uint8_t outport_id[PIPELINE_MAX_PORT_IN];
 
+	//cache表
 	struct pipeline_cgnapt_entry_key
 			cgnapt_dyn_ent_table[RTE_PORT_IN_BURST_SIZE_MAX];
 	uint32_t cgnapt_dyn_ent_index[RTE_PORT_IN_BURST_SIZE_MAX];
@@ -566,9 +567,9 @@ struct rte_mempool *napt_port_pool;
  * A structure defining a bulk port allocation element.
  */
 struct napt_port_alloc_elem {
-	uint32_t count;
+	uint32_t count;//有多少个可供分配的port
 	uint32_t ip_addr[NUM_NAPT_PORT_BULK_ALLOC];
-	uint16_t ports[NUM_NAPT_PORT_BULK_ALLOC];
+	uint16_t ports[NUM_NAPT_PORT_BULK_ALLOC];//可分配的port
 };
 
 int napt_port_alloc_init(struct pipeline_cgnapt *p_nat);

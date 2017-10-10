@@ -169,6 +169,7 @@ pipeline_txrx_parse_args(struct pipeline_txrx *p,
 }
 
 uint32_t txrx_pkt_print_count;
+//单报文的txrx处理
 static inline void
 pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 {
@@ -796,7 +797,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 
 	/* Add entries to tables */
 	//为每个表添加一个表项，此表项要求发向指定port
-	//按顺序发向每个out-port
+	//按顺序发向每个out-port(一一对应）
 	for (i = 0; i < p->n_ports_in; i++) {
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT,

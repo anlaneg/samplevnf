@@ -241,6 +241,7 @@ app_thread(void *arg)
 		for (j = 0; j < n_custom; j++) {
 			struct app_thread_pipeline_data *data = &t->custom[j];
 
+			//调用用户自定义的run
 			PIPELINE_RUN_CUSTOM(t, data);
 		}
 

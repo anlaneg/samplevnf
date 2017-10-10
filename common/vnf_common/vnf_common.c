@@ -82,10 +82,10 @@ uint32_t get_pub_to_prv_port(uint32_t *ip_addr, uint8_t type)
 	case 4:
 	{
 		uint32_t nhip;
-		nhip = get_nh(ip_addr[0], &dest_if, &addr);
+		nhip = get_nh(ip_addr[0], &dest_if, &addr);//获取下一跳ip地址
 
 		if (nhip)
-			return dest_if;
+			return dest_if;//返回下一跳的出接口
 		return 0xff;
 	}
 	break;
