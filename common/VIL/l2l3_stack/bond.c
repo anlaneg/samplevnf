@@ -21,6 +21,7 @@ extern uint8_t ifm_debug;
 extern int USE_RTM_LOCKS;
 extern rte_rwlock_t rwlock;
 
+//创建bond口
 int ifm_bond_port_create(const char *name, int mode, port_config_t * portconf)
 {
 	int port_id;

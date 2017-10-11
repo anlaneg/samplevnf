@@ -59,6 +59,7 @@ do {							\
 
 #endif
 
+//收取消息
 static inline void *
 thread_msg_recv(struct rte_ring *r)
 {
@@ -246,13 +247,16 @@ app_thread(void *arg)
 		}
 
 		/* Timer */
+		//优化:每隔16次循环检查一次if(time < t->deadline)
 		if ((i & 0xF) == 0) {
 			uint64_t time = rte_get_tsc_cycles();
 			uint64_t t_deadline = UINT64_MAX;
 
 			if (time < t->deadline)
+				//用于辅助每隔deadline间隔执行一次
 				continue;
 
+			//下面这两段可以抽取一个函数来简化代码。
 			/* Timer for regular pipelines */
 			for (j = 0; j < n_regular; j++) {
 				struct app_thread_pipeline_data *data =
@@ -260,11 +264,14 @@ app_thread(void *arg)
 				uint64_t p_deadline = data->deadline;
 
 				if (p_deadline <= time) {
+					//已过期，执行其timer函数
 					data->f_timer(data->be);
+					//设置下次执行时间
 					p_deadline = time + data->timer_period;
 					data->deadline = p_deadline;
 				}
 
+				//取下次执行时间点
 				if (p_deadline < t_deadline)
 					t_deadline = p_deadline;
 			}
@@ -276,11 +283,14 @@ app_thread(void *arg)
 				uint64_t p_deadline = data->deadline;
 
 				if (p_deadline <= time) {
+					//已过期，执行其timer函数
 					data->f_timer(data->be);
+					//设置下次执行时间
 					p_deadline = time + data->timer_period;
 					data->deadline = p_deadline;
 				}
 
+				//取下次执行时间点
 				if (p_deadline < t_deadline)
 					t_deadline = p_deadline;
 			}
@@ -290,16 +300,19 @@ app_thread(void *arg)
 				uint64_t deadline = t->thread_req_deadline;
 
 				if (deadline <= time) {
+					//线程消息请求处理延迟过期，开始消息请求处理
 					thread_msg_req_handle(t);
 					thread_headroom_update(t, time);
 					deadline = time + t->timer_period;
 					t->thread_req_deadline = deadline;
 				}
 
+				//取下次执行时间点
 				if (deadline < t_deadline)
 					t_deadline = deadline;
 			}
 
+			//设置系统下次的deadline
 			t->deadline = t_deadline;
 		}
 	}

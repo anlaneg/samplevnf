@@ -302,6 +302,7 @@ typedef struct _ifm_client_ {
 typedef struct _interface_main_ {
 	l2_phy_interface_t *port_list[IFM_MAX_PORTARR_SZ];
 	uint32_t nport_configured;			 /**< no of ports sucessfully configured during PCI probe*/
+	//系统有多少个port
 	uint32_t nport_intialized;			 /**< no of ports sucessfully initialized through ifm_init*/
 	uint8_t nclient;				 /**< no of clients registered for Interface manager events*/
 	ifm_client if_client[IFM_MAX_CLIENT];		 /**< Array of interface manager client details*/

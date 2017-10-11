@@ -1030,6 +1030,7 @@ app_init_link(struct app_params *app)
                                 ~(ETH_TXQ_FLAGS_NOXSUMTCP|ETH_TXQ_FLAGS_NOXSUMUDP);
                 }
 
+                //配置物理口
                 if (ifm_port_setup (p_link->pmd_id, &port_config[i])) {
                         printf("Failed to configure port %s - %"PRIu32
                                ".\n", p_link->name, p_link->pmd_id);

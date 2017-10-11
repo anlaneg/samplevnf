@@ -88,9 +88,11 @@ void l3fwd_init(void)
 		rte_exit(EXIT_FAILURE, "L3 Initialization for IPV6 Failed\n");
 	}
 
+	//注册链路层报文处理方式
 	list_add_type(ETHER_TYPE_IPv4, l3fwd_rx_ipv4_packets);
 	list_add_type(ETHER_TYPE_IPv6, l3fwd_rx_ipv6_packets);
 
+	//定义ipv4协议处理方式
 	l3_protocol_type_add(IPPROTO_ICMP, ip_local_packets_process);
 	l3_protocol_type_add(IPPROTO_TCP, ip_forward_deliver);
 	l3_protocol_type_add(IPPROTO_UDP, ip_forward_deliver);

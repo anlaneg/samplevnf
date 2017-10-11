@@ -1672,6 +1672,7 @@ struct ether_addr *get_link_hw_addr(uint8_t out_port)
 	return &p_arp_data->link_hw_addr[out_port];
 }
 
+//发送arp请求，自port_id口
 void request_arp(uint8_t port_id, uint32_t ip)
 {
 
@@ -1805,6 +1806,7 @@ process_arpicmp_pkt_parse(struct rte_mbuf **pkt, uint16_t pkt_num,
 
 }
 
+//处理arp报文，icmp报文
 void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 {
 	uint8_t in_port_id = pkt->port;

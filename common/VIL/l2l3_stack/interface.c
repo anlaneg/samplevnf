@@ -85,6 +85,7 @@ void ifm_init(void)
 		else
 			rte_rwlock_write_lock(&rwlock);
 
+		//将ifm中的port_list置为NULL
 		ifm.port_list[i] = NULL;
 		if (ifm_debug & IFM_DEBUG_LOCKS)
 			RTE_LOG(INFO, IFM, "%s: Releasing WR lock @ %d\n\r",
@@ -100,31 +101,38 @@ void ifm_init(void)
 		"PCI probing %u.\n\r", ifm.nport_intialized);
 }
 
+//移除某一个物理port
 void ifm_remove_port_details(uint8_t portid)
 {
 	if (ifm.port_list[portid] != NULL) {
 		if (ifm_debug & IFM_DEBUG_LOCKS)
 			RTE_LOG(INFO, IFM, "%s: Acquiring lock %d\n\r",
 				__FUNCTION__, __LINE__);
+		//加锁保护
 		if (USE_RTM_LOCKS)
 			rtm_lock();
 		else
 			rte_rwlock_write_lock(&rwlock);
+		//取portid对应的物理port
 		l2_phy_interface_t *port = ifm.port_list[portid];
+		//将其移除
 		ifm.port_list[portid] = NULL;
 		if (ifm_debug & IFM_DEBUG_CONFIG)
 			RTE_LOG(INFO, IFM, "%s: NULL set for port %u\n\r",
 				__FUNCTION__, portid);
+		//释放内存
 		rte_free(port);
 		if (ifm_debug & IFM_DEBUG_LOCKS)
 			RTE_LOG(INFO, IFM, "%s: Releasing lock @ %d\n\r",
 				__FUNCTION__, __LINE__);
 
+		//解锁
 		if (USE_RTM_LOCKS)
 			rtm_unlock();
 		else
 			rte_rwlock_write_unlock(&rwlock);
 	} else {
+		//不存在这个口
 		if (ifm_debug & IFM_DEBUG_LOCKS)
 			RTE_LOG(INFO, IFM,
 				"%s: Failed to remove port details.Port %u info"
@@ -132,6 +140,7 @@ void ifm_remove_port_details(uint8_t portid)
 	}
 }
 
+//加锁提取port信息
 l2_phy_interface_t *ifm_get_port(uint8_t port_id)
 {
 	l2_phy_interface_t *port = NULL;
@@ -147,6 +156,7 @@ l2_phy_interface_t *ifm_get_port(uint8_t port_id)
 	port = ifm.port_list[port_id];
 
 	if (port == NULL) {
+		//此port不存
 		/*RTE_LOG(ERR, IFM, "%s: Port %u info not found... configure it first.\n\r",
 			 __FUNCTION__, port_id);
 		 */
@@ -159,6 +169,7 @@ l2_phy_interface_t *ifm_get_port(uint8_t port_id)
 			rte_rwlock_read_unlock(&rwlock);
 		return NULL;
 	}
+
 	if (port->pmdid == port_id) {
 		/*RTE_LOG(INFO, IFM, "%s: Port %u found....\n\r",
 			 __FUNCTION__, port_id); */
@@ -187,6 +198,7 @@ l2_phy_interface_t *ifm_get_port(uint8_t port_id)
 	return NULL;
 }
 
+//返回port_id = 0 ,这个函数可以与上面的函数合并？
 l2_phy_interface_t *ifm_get_first_port(void)
 {
 	l2_phy_interface_t *port = NULL;
@@ -223,6 +235,7 @@ l2_phy_interface_t *ifm_get_first_port(void)
 	return port;
 }
 
+//此函数可与上面的get函数合并
 l2_phy_interface_t *ifm_get_next_port(uint8_t port_id)
 {
 	l2_phy_interface_t *port = NULL;
@@ -257,6 +270,7 @@ l2_phy_interface_t *ifm_get_next_port(uint8_t port_id)
 	return port;
 }
 
+//通过名称找物理接口
 l2_phy_interface_t *ifm_get_port_by_name(const char *name)
 {
 	l2_phy_interface_t *port = NULL;
@@ -296,6 +310,7 @@ l2_phy_interface_t *ifm_get_port_by_name(const char *name)
 	return NULL;
 }
 
+//链路状态回调，用于维护状态
 void lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			void *param)
 {
@@ -315,8 +330,10 @@ void lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	} else {
 		rte_rwlock_write_lock(&rwlock);
 	}
+	//获取当前状态
 	rte_eth_link_get(port_id, &link);
 	for (i = 0; i < nclients; i++)
+		//执行业务层面的接口状态变更回调
 		ifm.if_client[i].cb_linkupdate(port_id, link.link_status);
 	port = ifm.port_list[port_id];
 	if (port == NULL) {
@@ -326,6 +343,7 @@ void lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	}
 	if (port != NULL && port->pmdid == port_id) {
 		if (link.link_status) {
+			//更新速率
 			port->link_status = IFM_ETH_LINK_UP;
 			port->link_speed = link.link_speed;
 			port->link_duplex = link.link_duplex;
@@ -505,6 +523,7 @@ void ifm_update_linkstatus(uint8_t port_id, uint16_t linkstatus)
 	}
 }
 
+//设置mtu
 void ifm_set_l2_interface_mtu(uint8_t port_id, uint16_t mtu)
 {
 	int ret;
@@ -549,6 +568,7 @@ void ifm_set_l2_interface_mtu(uint8_t port_id, uint16_t mtu)
 	}
 }
 
+//设置混杂模式
 void ifm_set_port_promisc(uint8_t port_id, uint8_t enable)
 {
 	l2_phy_interface_t *port;
@@ -716,6 +736,7 @@ int ifm_transmit_single_pkt(l2_phy_interface_t *port, struct rte_mbuf *tx_pkts)
 	return tx_npkts;
 }
 
+//添加多ip
 int16_t ifm_add_ipv4_port(uint8_t port_id, uint32_t ipaddr, uint32_t addrlen)
 {
 	l2_phy_interface_t *port;
@@ -1132,6 +1153,7 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 	else
 		rte_rwlock_write_unlock(&rwlock);
 
+	//检查链路状态
 	rte_eth_link_get(port_id, &linkstatus);
 	if (linkstatus.link_status) {
 		if (ifm_debug & IFM_DEBUG_CONFIG) {
@@ -1151,6 +1173,7 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 			"for port %u.\n\r", __FUNCTION__, port_id);
 		return IFM_FAILURE;
 	}
+	//注册链路状态变更事件
 	status = rte_eth_dev_callback_register(port_id,
 								 RTE_ETH_EVENT_INTR_LSC,
 								 lsi_event_callback, NULL);

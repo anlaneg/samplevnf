@@ -509,6 +509,7 @@ void *pipeline_arpicmp_msg_req_custom_handler(struct pipeline *p, void *msg)
 }
 
 uint32_t arpicmp_pkt_print_count;
+//arp,icmp报文处理
 static inline void
 pkt_key_arpicmp(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 {
@@ -569,6 +570,7 @@ pkt_key_arpicmp(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	#endif
 
 	/* Drop the pkt if not ARP/ICMP */
+	//其它报文丢弃
 	rte_pipeline_ah_packet_drop(p_arp->p.p, pkt_mask);
 	p_arp->droppedPktCount++;
 
@@ -848,6 +850,7 @@ static void *pipeline_arpicmp_init(struct pipeline_params *params,
 		return NULL;
 
 	/*Input ports */
+	//创建in-port
 	for (i = 0; i < p->n_ports_in; i++) {
 		/* passing our txrx pipeline in call back arg */
 		(ap[i]).p = p_arp;

@@ -244,6 +244,7 @@ int lcore_mainloop (__attribute__ ((unused))
 			}
 			nb_rx = port->retrieve_bulk_pkts(portid, 0, pkts_burst);
 			port->n_rxpkts += nb_rx;
+			//按协议处理报文
 			protocol_handler_recv(pkts_burst, nb_rx, port);
 			port = ifm_get_next_port(portid);
 			if (port != NULL)
@@ -295,6 +296,7 @@ int main(int argc, char **argv)
 		printf("%02X%02X ", ipv6_addr1[ii], ipv6_addr1[ii + 1]);
 	}
 	printf("REMOTE LAUNCH STARTED........\n");
+	//报文处理loop
 	rte_eal_remote_launch(lcore_mainloop, NULL, lcore_id);
 	printf("REMOTE LAUNCH DONE.......\n");
 	if (rte_eal_wait_lcore(lcore_id) < 0) {

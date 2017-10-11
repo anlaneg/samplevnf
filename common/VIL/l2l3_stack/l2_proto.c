@@ -143,12 +143,14 @@ protocol_handler_recv(struct rte_mbuf **pkts_burst, uint16_t nb_rx,
 	}
 	if (nb_rx) {
 		if (arp_pkts_mask) {
+			//处理arp报文
 			proto_list[ARP_VAL]->func(pkts_burst, nb_rx,
 							arp_pkts_mask, port);
 			printf
 					("=================After ARP ==================\n");
 		}
 		if (ipv4_pkts_mask) {
+			//处理ipv4报文
 			printf
 					("=================Calling IPV4 L3 RX ==================\n");
 			printf("====nb_rx:%u, ipv4_pkts_mask: %lu\n\n", nb_rx,
@@ -157,6 +159,7 @@ protocol_handler_recv(struct rte_mbuf **pkts_burst, uint16_t nb_rx,
 							 ipv4_pkts_mask, port);
 		}
 		if (ipv6_pkts_mask) {
+			//处理ipv6报文
 			printf
 					("=================Calling IPV6 L3 RX ==================\n");
 			printf("====nb_rx:%u, ipv6_pkts_mask: %lu\n\n", nb_rx,

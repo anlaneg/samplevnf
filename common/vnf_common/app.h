@@ -230,8 +230,8 @@ struct app_thread_pipeline_data {
 	void *be;
 	pipeline_be_op_run f_run;
 	pipeline_be_op_timer f_timer;
-	uint64_t timer_period;
-	uint64_t deadline;
+	uint64_t timer_period;//每隔多长时间执行一次f_timer
+	uint64_t deadline;//下次需要执行f_timer的时间点
 };
 
 #ifndef APP_MAX_THREAD_PIPELINES

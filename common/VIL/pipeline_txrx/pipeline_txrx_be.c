@@ -189,6 +189,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 
 	uint32_t pkt_mask = 1 << pkt_num;
 	/* ARP outport number */
+	//将arp重定向至此port处理
 	uint32_t out_port = p_txrx->p.n_ports_out - 1;
 
 	//这里直接采用＋12的方式，偏移到eth_proto,完全不考虑vlan等情况
@@ -247,8 +248,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	case ETH_TYPE_IPV4:
 		if ((*protocol == IP_PROTOCOL_ICMP)  &&
 			(link->ip == rte_be_to_cpu_32(*dst_addr))) {
-			//如果收到的是ip报文，且协议为icmp，且入接口的ip与此报发送过来的ip相同
-			//即报文是要送往本地的。
+			//如果收到的是ip报文，且协议为icmp，且入接口的ip与此报发送过来的目的ip相同
 			if (is_phy_port_privte(pkt->port)) {
 				rte_pipeline_port_out_packet_insert(
 					p_txrx->p.p,
@@ -277,6 +277,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	#endif
 
 	default: /* Not valid pkt */
+		//其它报文将被丢弃
 		printf("Dropping the pkt\n");
 		rte_pipeline_ah_packet_drop(p_txrx->p.p, pkt_mask);
 
