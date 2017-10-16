@@ -2301,12 +2301,13 @@ static int arp_parse_args(struct pipeline_params *params)
 			char *token = strtok(arg_value, "RXQ");
 			while (token) {
 				j = 0;
+				//解析port-id
 				while ((j < 4) && (token[j] != '.')) {
 					phy_port_num[j] = token[j];
 					j++;
 				}
-				phy_port_num[j] = '\0';
-				rxport = atoi(phy_port_num);
+				phy_port_num[j] = '\0';//加入'\0',补充为字符串
+				rxport = atoi(phy_port_num);//将port-id转为数字
 				prv_in_port_a[n_prv_in_port++] = rxport;
 				if (rxport < 0)
 					rxport = 0;
@@ -2316,6 +2317,8 @@ static int arp_parse_args(struct pipeline_params *params)
 				prv_in_port_a[n_prv_in_port++] = rxport;
 				if(rxport < PIPELINE_MAX_PORT_IN)
 				in_port_dir_a[rxport] = 1;	// set rxport egress
+
+				//解析下一组
 				token = strtok(NULL, "RXQ");
 			}
 
@@ -2352,23 +2355,25 @@ static int arp_parse_args(struct pipeline_params *params)
 			char *token = strtok(arg_value, "(");
 			while (token) {
 				j = 0;
+				//解析出逗号前的数字
 				while ((j < 4) && (token[j] != ',')) {
 					rx_phy_port_num[j] = token[j];
 					j++;
 				}
 				rx_phy_port_num[j] = '\0';
-				rxport = atoi(rx_phy_port_num);
+				rxport = atoi(rx_phy_port_num);//将其做为rxport
 				if (rxport < 0)
 					rxport = 0;
 
 				j++;
 				k = 0;
+				//解析出')'前的数字
 				while ((k < 4) && (token[j + k] != ')')) {
 					tx_phy_port_num[k] = token[j + k];
 					k++;
 				}
 				tx_phy_port_num[k] = '\0';
-				txport = atoi(tx_phy_port_num);
+				txport = atoi(tx_phy_port_num);//将其做为txport
 				if (txport < 0)
 					txport = 0;
 
@@ -2388,8 +2393,11 @@ static int arp_parse_args(struct pipeline_params *params)
 					return -1;
 				}
 
+				//private port 到public port
 				prv_to_pub_map[rxport] = txport;
 				pub_to_prv_map[txport] = rxport;
+
+				//尝试解析下一对
 				token = strtok(NULL, "(");
 			}
 

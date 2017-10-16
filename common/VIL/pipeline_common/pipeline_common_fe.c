@@ -615,6 +615,7 @@ int app_routeadd_config_ipv6(__attribute__((unused)) struct app_params *app,
  * cmd handler for handling route add entry at runtime.
  * the same handle takes care of both ipv4 & ipv6
  */
+//路由添加
 static void
 cmd_routeadd_parsed(
         void *parsed_result,
@@ -671,9 +672,9 @@ cmdline_parse_inst_t cmd_routeadd = {
         .data = NULL,
         .help_str = "Add Route entry",
         .tokens = {
-                (void *) &cmd_routeadd_config_string,
-                (void *) &cmd_routeadd_config_port_id,
-				(void *) &cmd_routeadd_config_ip,
+                (void *) &cmd_routeadd_config_string,//routeadd
+                (void *) &cmd_routeadd_config_port_id,//portid
+				(void *) &cmd_routeadd_config_ip,//ip addr
 				(void *) &cmd_routeadd_config_depth_string,
                 NULL,
         },

@@ -84,7 +84,7 @@ setup_env()
 	echo
 	echo "Checking network connectivity..."
 	# b. Check for internet connections
-	wget -T 20 -t 3 --spider http://www.google.com > /dev/null 2>&1
+	wget -T 20 -t 3 --spider http://www.baidu.com > /dev/null 2>&1
 	if [ "$?" != 0 ]; then
 		while true; do
 			read -p "No Internet connection. Are you behind a proxy (y/n)? " yn

@@ -785,6 +785,7 @@ pipeline_loadb_parse_args(struct pipeline_loadb *p,
 
 			if ((p->n_vnf_threads <= 0)
 					|| (total_vnf_threads > MAX_VNF_THREADS)) {
+				//线程数过大或者过小时报错
 				printf("n_vnf_threads : MIN->0 MAX->16\n");
 				return -1;
 			}

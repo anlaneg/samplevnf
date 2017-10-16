@@ -557,7 +557,7 @@ pkt_key_arpicmp(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 			((rte_be_to_cpu_16(*eth_proto) == ETH_TYPE_IPV4)
 			 && (*protocol == IP_PROTOCOL_ICMP)
 		)) {
-		//处理arp icmp报文
+		//处理arp icmp报文(从那个口进，从那个口出）
 		process_arpicmp_pkt(pkt, ifm_get_port(in_port_id));
 		return;
 	}
