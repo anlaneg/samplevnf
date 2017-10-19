@@ -456,6 +456,7 @@ static cmdline_parse_ctx_t thread_cmds[] = {
 	NULL,
 };
 
+//pipeline线程命令行注册
 int
 app_pipeline_thread_cmd_push(struct app_params *app)
 {

@@ -1011,26 +1011,30 @@ app_init_link(struct app_params *app)
 			n_hwq_in,
 			n_hwq_out);
 
+		//用于存port的配置
                 port_config[i].port_id = p_link->pmd_id;
-                port_config[i].nrx_queue = n_hwq_in;
-                port_config[i].ntx_queue = n_hwq_out;
+                port_config[i].nrx_queue = n_hwq_in;//rx队列数量
+                port_config[i].ntx_queue = n_hwq_out;//tx队列数量
                 port_config[i].state = 1;
-                port_config[i].promisc = p_link->promisc;
+                port_config[i].promisc = p_link->promisc;//是否开启混杂
                 port_config[i].mempool.pool_size = app->mempool_params[0].pool_size;
                 port_config[i].mempool.buffer_size = app->mempool_params[0].buffer_size;
                 port_config[i].mempool.cache_size = app->mempool_params[0].cache_size;
                 port_config[i].mempool.cpu_socket_id = app->mempool_params[0].cpu_socket_id;
+                //接口配置
                 memcpy (&port_config[i].port_conf, &p_link->conf, sizeof(struct rte_eth_conf));
+                //rx及tx配置信息
                 memcpy (&port_config[i].rx_conf, &app->hwq_in_params[0].conf, sizeof(struct rte_eth_rxconf));
                 memcpy (&port_config[i].tx_conf, &app->hwq_out_params[0].conf, sizeof(struct rte_eth_txconf));
 
                 if(app->header_csum_req) {
                         /* Enable TCP and UDP HW Checksum */
+                		//开启checksum
                         port_config[i].tx_conf.txq_flags &=
                                 ~(ETH_TXQ_FLAGS_NOXSUMTCP|ETH_TXQ_FLAGS_NOXSUMUDP);
                 }
 
-                //配置物理口
+                //配置物理口，网卡将在此处被完成配置，然后启动
                 if (ifm_port_setup (p_link->pmd_id, &port_config[i])) {
                         printf("Failed to configure port %s - %"PRIu32
                                ".\n", p_link->name, p_link->pmd_id);
@@ -1411,6 +1415,7 @@ static void app_pipeline_params_get(struct app_params *app,
 	}
 
 	/* pktq_out */
+	//处理out port
 	p_out->n_ports_out = p_in->n_pktq_out;
 	for (i = 0; i < p_in->n_pktq_out; i++) {
 		struct app_pktq_out_params *in = &p_in->pktq_out[i];
@@ -1445,7 +1450,7 @@ static void app_pipeline_params_get(struct app_params *app,
 				params->port_id = p_link->pmd_id;//填充port-id
 				params->queue_id = txq_queue_id;//发送的queue-id
 				params->tx_burst_sz =
-					app->hwq_out_params[in->id].burst;
+					app->hwq_out_params[in->id].burst;//发送的burst大小
 			} else {
 				//尽最大可能的不丢包
 				struct rte_port_ethdev_writer_nodrop_params
@@ -1729,12 +1734,13 @@ int app_init(struct app_params *app)
 	app_init_tm(app);
 	app_init_msgq(app);
 
-	//命令回调注册
+	//公共命令回调注册
 	app_pipeline_common_cmd_push(app);
 	app_pipeline_thread_cmd_push(app);
-	//app类型注册
-	app_pipeline_type_register(app, &pipeline_master);//处理命令行
-	app_pipeline_type_register(app, &pipeline_cgnapt);//cgnat处理
+
+	//pipeline 类型注册
+	app_pipeline_type_register(app, &pipeline_master);
+	app_pipeline_type_register(app, &pipeline_cgnapt);
 	app_pipeline_type_register(app, &pipeline_loadb);
 	app_pipeline_type_register(app, &pipeline_timer);
 	app_pipeline_type_register(app, &pipeline_txrx);

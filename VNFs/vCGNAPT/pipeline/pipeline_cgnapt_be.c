@@ -3871,10 +3871,15 @@ pkt_work_cgnapt_ipv4_prv(
 		update_nhip_access(dest_if);
 		if (unlikely(ret_arp_data && ret_arp_data->num_pkts)) {
 			p_nat->naptedPktCount += ret_arp_data->num_pkts;
+			//发送因arp未发送出去，而缓存的报文
 			arp_send_buffered_pkts(ret_arp_data,
 				 (struct ether_addr *)eth_dest, *outport_id);
 
 		}
+		//XXX 加速相应的流
+		//src_ip=*src_addr,src_port=*src_port,protocol=protocol,
+		//xlate_src_ip=rte_bswap32(entry->data.pub_ip),xlate_src_port=rte_bswap16(entry->data.pub_port)
+		//xlate_srcmac=eth_src,xlate_dstmac=eth_dest
 	} else {
 
 		if (unlikely(ret_arp_data == NULL)) {

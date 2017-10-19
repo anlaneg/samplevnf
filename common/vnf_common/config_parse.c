@@ -214,6 +214,7 @@ static const char app_usage[] =
 	"\t--preproc-args ARGS: Arguments to be passed to pre-processor\n"
 	"\n";
 
+//显示命令行用法
 static void
 app_print_usage(char *prgname)
 {
@@ -1397,7 +1398,7 @@ parse_pipeline_msgq_out(struct app_params *app,
 	return 0;
 }
 
-//pipeline配置解析
+//pipeline配置解析（pipeline是分类型的，这里只对pipeline公共属性进行解析）
 static void
 parse_pipeline(struct app_params *app,
 	const char *section_name,
@@ -1500,6 +1501,7 @@ parse_pipeline(struct app_params *app,
 			continue;
 		}
 
+		//读pcap文件
 		if (strcmp(ent->name, "pcap_file_rd") == 0) {
 			int status;
 
@@ -1530,6 +1532,7 @@ parse_pipeline(struct app_params *app,
 			continue;
 		}
 
+		//写pcap
 		if (strcmp(ent->name, "pcap_file_wr") == 0) {
 			int status;
 
@@ -1706,6 +1709,7 @@ parse_link(struct app_params *app,
 	for (i = 0; i < n_entries; i++) {
 		struct rte_cfgfile_entry *ent = &entries[i];
 
+		//link是否开启混杂
 		if (strcmp(ent->name, "promisc") == 0) {
 			int status = parser_read_arg_bool(ent->value);
 
@@ -1799,6 +1803,7 @@ parse_link(struct app_params *app,
 	free(entries);
 }
 
+//配置rxq队列
 static void
 parse_rxq(struct app_params *app,
 	const char *section_name,
@@ -2201,6 +2206,7 @@ parse_tm(struct app_params *app,
 	free(entries);
 }
 
+//配置source方式（例如读取pcap文件来模拟输入）
 static void
 parse_source(struct app_params *app,
 	const char *section_name,
@@ -2290,6 +2296,7 @@ parse_source(struct app_params *app,
 	free(entries);
 }
 
+//采用写pcap文件模拟输出
 static void
 parse_sink(struct app_params *app,
 	const char *section_name,
@@ -2579,6 +2586,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 
 	/* Port mask */
 	//自port_mask生成link信息
+	//指定了使用的端口，生成link信息参数
 	if (app->port_mask)
 		create_implicit_links_from_port_mask(app, app->port_mask);
 
@@ -2599,6 +2607,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 	for (i = 0; i < sect_count; i++)
 		section_names[i] = malloc(CFG_NAME_LEN);
 
+	//填充段名称到section_names中
 	rte_cfgfile_sections(cfg, section_names, sect_count);
 
 	for (i = 0; i < sect_count; i++) {
@@ -2614,7 +2623,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 			len = strlen(sch_s->prefix);
 
 			if (cfg_name_len < len)
-				continue;//非本段，跳过
+				continue;//非本段，跳过（快速匹配方式，算一种优化）
 
 			/* After section name we expect only '\0' or digit or
 			 * digit dot digit, so protect against false matching,
@@ -2622,12 +2631,13 @@ app_config_parse(struct app_params *app, const char *file_name)
 			 * "ABC0.0", but it should not match section_name
 			 * "ABCDEF".
 			 */
+			//如果名称完全相同，或者前缀匹配成功，且后面完全为纯数字，则认为可能匹配成功。
 			if ((section_names[i][len] != '\0') &&
 				!isdigit(section_names[i][len]))
-				continue;//认为区配
+				continue;//认为不匹配
 
 			if (strncmp(sch_s->prefix, section_names[i], len) == 0)
-				break;//配置失败，报错
+				break;//可能匹配成功，进一步检查
 		}
 
 		//对失配的段报错
@@ -2641,7 +2651,7 @@ app_config_parse(struct app_params *app, const char *file_name)
 			"Parse error: invalid section name \"%s\"",
 			section_names[i]);
 
-		//对相应的段，按类型进行load,解析相应的配置
+		//匹配成功，对相应的段，按类型进行load,解析相应的配置
 		sch_s->load(app, section_names[i], cfg);
 	}
 
@@ -3321,7 +3331,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 			break;
 
 		case 's'://脚本文件
-			if (s_present)
+			if (s_present)//s只容许出现一次
 				rte_panic("Error: Script file is provided "
 					"more than once\n");
 			s_present = 1;
@@ -3335,7 +3345,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 			break;
 
-		case 'p'://port mask
+		case 'p'://port mask （指出使用哪几个端口）
 			if (p_present)
 				rte_panic("Error: PORT_MASK is provided "
 					"more than once\n");
@@ -3371,6 +3381,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 		case 0:
 			optname = lgopts[option_index].name;
 
+			//硬件loadbalance
 			if (strcmp(optname, "hwlb") == 0) {
 				if (hwlb_present)
 					rte_panic("Error: hwlb argument "
@@ -3388,18 +3399,19 @@ app_config_args(struct app_params *app, int argc, char **argv)
 			break;
 			}
 
-                       if (strcmp(optname, "flow_dir") == 0) {
-                                if (flow_dir_present)
-                                        rte_panic("Error: flow_dir argument "
-                                                "is provided more than once\n");
-                        flow_dir_present = 1;
-                        printf(" FLOW DIR is configured\n");
+		   if (strcmp(optname, "flow_dir") == 0) {
+					if (flow_dir_present)
+							rte_panic("Error: flow_dir argument "
+									"is provided more than once\n");
+					flow_dir_present = 1;
+					printf(" FLOW DIR is configured\n");
 
-			enable_flow_dir = 1;
+					enable_flow_dir = 1;
 
-                        break;
-                        }
+			break;
+			}
 
+		    //禁用硬件checksum
 			if (strcmp(optname, "disable-hw-csum") == 0) {
 				if (disable_csum_present)
 					rte_panic("Error: disable-hw-csum argument "
@@ -3433,6 +3445,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 				break;
 			}
 
+			//不认识的命令，显示用法
 			app_print_usage(argv[0]);
 			break;
 
@@ -3443,10 +3456,12 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	optind = 0; /* reset getopt lib */
 
 	/* Check dependencies between args */
+	//预处理命令没有出现，但出现了预处理命令参数，报错
 	if (preproc_params_present && (preproc_present == 0))
 		rte_panic("Error: Preprocessor args specified while "
 			"preprocessor is not defined\n");
 
+	//生成相应的文件名称
 	app->parser_file = preproc_present ?
 		filenamedup(app->config_file, ".preproc") :
 		strdup(app->config_file);

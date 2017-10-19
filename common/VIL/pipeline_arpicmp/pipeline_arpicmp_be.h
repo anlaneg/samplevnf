@@ -70,6 +70,8 @@ void pipelines_map_info(void);
 void register_loadb_to_arp(uint8_t pipeline_num, struct pipeline *p,
 				 __rte_unused struct app_params *app);
 /* vnf_to_loadb_map[]  and loadb_pipelines[] */
+//指明某个出队列(SWQ方式）它的入队列是谁（下标对应出队列编号，值对应出队列编号）
+//当入队列类型是HQ是指出的是port id
 uint8_t SWQ_to_Port_map[128];
 
 extern struct pipeline_be_ops pipeline_arpicmp_be_ops;

@@ -690,6 +690,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 				RTE_CACHE_LINE_SIZE);
 	if (ap == NULL)
 		return NULL;
+
 	/*Input ports */
 	for (i = 0; i < p->n_ports_in; i++) {
 		/* passing our txrx pipeline in call back arg */
@@ -752,7 +753,9 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	}
 	p_pt->pipeline_num = (uint8_t) pipeline_num;
 
+	//处理了出接口类型为SWQ时与HWQ或者SWQ的映射情况
 	register_pipeline_Qs(p_pt->pipeline_num, p);
+	//填充了出接口类型为SWQ时或者HWQ时，links_map对应对应SWQ或者物理port id
 	set_link_map(p_pt->pipeline_num, p, p_pt->links_map);
 	set_outport_id(p_pt->pipeline_num, p, p_pt->outport_id);
 
@@ -802,7 +805,7 @@ static void *pipeline_txrx_init(struct pipeline_params *params,
 	for (i = 0; i < p->n_ports_in; i++) {
 		struct rte_pipeline_table_entry default_entry = {
 			.action = RTE_PIPELINE_ACTION_PORT,
-			.port_id = p->port_out_id[i],
+			.port_id = p->port_out_id[i],//in与out一一对应
 		};
 
 		struct rte_pipeline_table_entry *default_entry_ptr;

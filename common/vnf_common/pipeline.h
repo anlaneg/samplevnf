@@ -49,6 +49,7 @@ struct pipeline_type {
 	struct pipeline_fe_ops *fe_ops;//前端，维护性动作，命令行处理
 };
 
+//有多少命令行
 static inline uint32_t
 pipeline_type_cmds_count(struct pipeline_type *ptype)
 {

@@ -1110,7 +1110,7 @@ void ifm_register_for_linkupdate(uint32_t clientid,
 	ifm.nclient++;
 }
 
-//配置接口
+//配置网卡，启动网卡
 int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 {
 	int status, sock;
@@ -1120,11 +1120,13 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 	l2_phy_interface_t *port = NULL;
 
 	if (!ifm.nport_intialized) {
+		//dpdk未别出来接口，失败
 		RTE_LOG(ERR, IFM, "%s: Failed to configure port %u. 0 ports"
 			"were intialized during PCI probe...\n\r",
 			__FUNCTION__, port_id);
 		return IFM_FAILURE;
 	}
+	//说明正计划配置哪个接口，计划多少收队列，发队列
 	if (ifm_debug & IFM_DEBUG_CONFIG)
 		RTE_LOG(INFO, IFM, "%s: Configuring port %u with "
 			"nrxq: %u, ntxq: %u\n\r", __FUNCTION__,
@@ -1156,6 +1158,7 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 	//检查链路状态
 	rte_eth_link_get(port_id, &linkstatus);
 	if (linkstatus.link_status) {
+		//当前链路是up的，先使其down
 		if (ifm_debug & IFM_DEBUG_CONFIG) {
 			RTE_LOG(INFO, IFM, "%s: %u is up.Stop it before"
 				" reconfiguring.\n\r", __FUNCTION__, port_id);
@@ -1185,14 +1188,17 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 	}
 	/*promiscuous mode is enabled set it */
 	if (pconfig->promisc)
+		//如果需要开启混杂模式，则开启
 		rte_eth_promiscuous_enable(port_id);
 
+	//获取dev在哪个socket上
 	sock = rte_eth_dev_socket_id(port_id);
 	if (sock == -1)
 		RTE_LOG(ERR, IFM, "%s: Warning: rte_eth_dev_socket_id,"
 			" port_id value is"
 			"out of range %u\n\r", __FUNCTION__, port_id);
 	/*Port initialization */
+	//创建网卡tx队列
 	int ntxqs;
 	for (ntxqs = 0; ntxqs < pconfig->ntx_queue; ntxqs++) {
 		status = rte_eth_tx_queue_setup(port_id, ntxqs,
@@ -1241,6 +1247,7 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 	}
 	rte_eth_tx_buffer_init(port->tx_buffer, IFM_BURST_SIZE);
 
+	//创建mbuf pool
 	sprintf(buf, "MEMPOOL%d", port_id);
 	port->mempool = rte_mempool_create(buf,
 						 pconfig->mempool.pool_size,
@@ -1251,6 +1258,7 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 						 rte_pktmbuf_pool_init, NULL,
 						 rte_pktmbuf_init, NULL, sock, 0);
 	if (port->mempool == NULL) {
+		//创建mbuf pool失败
 		ifm_remove_port_details(port_id);
 		RTE_LOG(ERR, IFM, "%s: rte_mempool_create is failed for port"
 			" %u. Error: %s\n\r",
@@ -1264,6 +1272,8 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 			rte_rwlock_write_unlock(&rwlock);
 		return IFM_FAILURE;
 	}
+
+	//创建网卡rx队列
 	int nrxqs;
 	for (nrxqs = 0; nrxqs < pconfig->nrx_queue; nrxqs++) {
 		status = rte_eth_rx_queue_setup(port_id, nrxqs,
@@ -1296,6 +1306,8 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 		rtm_unlock();
 	else
 		rte_rwlock_write_unlock(&rwlock);
+
+	//网卡启动
 	status = rte_eth_dev_start(port_id);
 	if (status < 0) {
 		ifm_remove_port_details(port_id);
@@ -1303,7 +1315,9 @@ int ifm_port_setup(uint8_t port_id, port_config_t *pconfig)
 			" port %u.\n\r", __FUNCTION__, port_id);
 		return IFM_FAILURE;
 	}
+	//等5S,等待网卡启动
 	rte_delay_ms(5000);
+
 	/*Get device info and populate interface structure */
 	if (ifm_debug & IFM_DEBUG_LOCKS)
 		RTE_LOG(INFO, IFM, "%s: Acquiring WR lock3 @ %d\n\r",

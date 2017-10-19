@@ -160,30 +160,41 @@ void register_pipeline_Qs(uint8_t pipeline_num, struct pipeline *p)
 	uint8_t port_count = 0;
 	int queue_out = 0xff, queue_in = 0xff;
 
+	//遍历当前配置的所有out-port
 	printf("Calling register_pipeline_Qs in PIPELINE%d\n", pipeline_num);
 	for (port_count = 0; port_count < rte->num_ports_out; port_count++) {
 
+	//针对每个out-port的类型进行处理
 	switch (myApp->pipeline_params[pipeline_num].
 				pktq_out[port_count].type){
 
 	case APP_PKTQ_OUT_SWQ:
-
+		//出接口为软队列形式，且数量超过入接口数量
 		if (port_count >= rte->num_ports_in) {
 
 			/* Dont register ARP output Q */
+			//出队列数量不是入队列数量的整数倍，且当前处理最后一个出队列，则
+			//退出
+			//此时：最后一个输出队列与输入队列无对应关系
+			//英文的注释是错误的。
 			if (rte->num_ports_out % rte->num_ports_in)
 				if (port_count == rte->num_ports_out - 1)
 					return;
+
+			//由于出队列数量多于入队列，故将出现多个入队列对应一个出队列的局面
+			//隐含要求出入队列必须为SWQ类型
+			//注：这里应加上校验，如果两者不相等，则最后一个队列不映射，且此时均为SWQ
+			//此值将用做ARP队列。
 			int temp;
 			temp = ((port_count) % rte->num_ports_in);
 
-			in_swq = rte->ports_in[temp].h_port;
-			out_swq = rte->ports_out[port_count].h_port;
+			in_swq = rte->ports_in[temp].h_port;//出队列out_swq的入队列为in_swq
+			out_swq = rte->ports_out[port_count].h_port;//port_count对应的队列为out_swq
 			printf("in_swq : %s\n",
 				in_swq->ring->name);
 			int status =
 			sscanf(in_swq->ring->name, "SWQ%d",
-					&queue_in);
+					&queue_in);//提取入队列编号
 			if (status < 0) {
 				printf("Unable to read SWQ number\n");
 				return;
@@ -192,31 +203,34 @@ void register_pipeline_Qs(uint8_t pipeline_num, struct pipeline *p)
 					out_swq->ring->name);
 			status =
 			sscanf(out_swq->ring->name, "SWQ%d",
-					&queue_out);
+					&queue_out);//提取出队列编号
 			if (status < 0) {
 				printf("Unable to read SWQ number\n");
 				return;
 			}
+
+			//入队列数与出队列数均不能大于128，如果大于，将认为无效，不处理
 			if (queue_in < 128 && queue_out < 128) {
 				SWQ_to_Port_map[queue_out] =
 					SWQ_to_Port_map[queue_in];
 			 printf("SWQ_to_Port_map[%d]%d\n", queue_out,
 				 SWQ_to_Port_map[queue_out]);
                         }
-			continue;
+			continue;//处理下一个port
 		}
 
+		//出接口类型为SWQ,检查入接口类型
 		switch (myApp->pipeline_params[pipeline_num].
 			 pktq_in[port_count].type){
 
-		case APP_PKTQ_OUT_HWQ:
+		case APP_PKTQ_OUT_HWQ://类型为硬件队列
 			 hwq = rte->ports_in[port_count].h_port;
 			 out_swq = rte->ports_out[port_count].h_port;
 			 printf("out_swq: %s\n",
 				 out_swq->ring->name);
 			int status =
 			sscanf(out_swq->ring->name, "SWQ%d",
-				 &queue_out);
+				 &queue_out);//出队列编号
 
 			if (status < 0) {
 				printf("Unable to read SWQ number\n");
@@ -229,7 +243,7 @@ void register_pipeline_Qs(uint8_t pipeline_num, struct pipeline *p)
 			}
 		break;
 
-		case APP_PKTQ_OUT_SWQ:
+		case APP_PKTQ_OUT_SWQ://类型为软件队列
 			 in_swq = rte->ports_in[port_count].h_port;
 			 out_swq = rte->ports_out[port_count].h_port;
 			 printf("in_swq : %s\n",
@@ -264,6 +278,7 @@ void register_pipeline_Qs(uint8_t pipeline_num, struct pipeline *p)
 
 	break;
 
+	//如果出队列类型为HWQ，则不处理
 	case APP_PKTQ_OUT_HWQ:
 		 printf("This is HWQ\n");
 	break;
@@ -274,6 +289,7 @@ void register_pipeline_Qs(uint8_t pipeline_num, struct pipeline *p)
 	}
 }
 
+//填充map，指明给定的出队列属于那个port(出队列为硬件队列情况下），或者指明给定的出队列是那个队列（出队列为软件队列情况下）
 void set_link_map(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 {
 		struct rte_port_ethdev_writer *hwq;
@@ -289,18 +305,18 @@ void set_link_map(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 		switch (myApp->pipeline_params[pipeline_num].
 				pktq_out[port_count].type){
 
-		case APP_PKTQ_OUT_HWQ:
+		case APP_PKTQ_OUT_HWQ://出队列为硬件队列
 			hwq = rte->ports_out[port_count].h_port;
-			map[index++] = hwq->port_id;
+			map[index++] = hwq->port_id;//取出此hwq是哪个port的硬件队列
 			printf("links_map[%d]:%d\n", index - 1, map[index - 1]);
 		break;
 
-		case APP_PKTQ_OUT_SWQ:
+		case APP_PKTQ_OUT_SWQ://出队列为软件队列
 			out_swq = rte->ports_out[port_count].h_port;
 			printf("set_link_map out_swq: %s\n",
 				out_swq->ring->name);
 			int status = sscanf(out_swq->ring->name, "SWQ%d",
-					&queue_out);
+					&queue_out);//取出软件队列编号
 			if (status < 0) {
 				printf("Unable to read SWQ number\n");
 				return;
@@ -319,6 +335,8 @@ void set_link_map(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 		}
 }
 
+//由于数据结构定义的时候考虑不全，导致这里准备擦屁股，为每一个硬件队列，软件队列生成一个索引值
+//index从0开始，对遇到的出队列进行编号（我认为可以尝试将硬件队列，软件队列进行函数编号映射）
 void set_outport_id(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 {
 	uint8_t port_count = 0;
@@ -328,6 +346,7 @@ void set_outport_id(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 	struct rte_port_ring_writer *out_swq;
 	struct rte_pipeline *rte = p->p;
 
+	//遍历每个出队列
 	printf("\n**** set_outport_id() with pipeline_num:%d ****\n\n",
 		pipeline_num);
 	for (port_count = 0;
@@ -337,7 +356,7 @@ void set_outport_id(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 	switch (myApp->pipeline_params[pipeline_num].
 			pktq_out[port_count].type) {
 
-	case APP_PKTQ_OUT_HWQ:
+	case APP_PKTQ_OUT_HWQ://出队列为硬件队列情况下
 		hwq = rte->ports_out[port_count].h_port;
 		//if (index >= 0)
 		{
@@ -355,10 +374,12 @@ void set_outport_id(uint8_t pipeline_num, struct pipeline *p, uint8_t *map)
 	case APP_PKTQ_OUT_SWQ:
 
 		/* Dont register ARP output Q */
+		//此队列用于注册arp，如果两者不相等。
 		if (port_count >= rte->num_ports_in)
 			if (rte->num_ports_out % rte->num_ports_in)
 				if (port_count == rte->num_ports_out - 1)
 					return;
+
 		 out_swq = rte->ports_out[port_count].h_port;
 		 printf("set_outport_id out_swq: %s\n",
 			 out_swq->ring->name);

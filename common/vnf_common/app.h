@@ -62,7 +62,7 @@ struct app_link_params {
 	uint64_t mac_addr; /* Read from HW */
 	char pci_bdf[APP_LINK_PCI_BDF_SIZE];
 
-	struct rte_eth_conf conf;
+	struct rte_eth_conf conf;//link的配置情况
 	uint8_t promisc;
 };
 
@@ -95,9 +95,9 @@ struct app_pktq_swq_params {
 	uint32_t dropless;
 	uint64_t n_retries;
 	uint32_t cpu_socket_id;
-	uint32_t ipv4_frag;
+	uint32_t ipv4_frag;//是否开启ipv4分片
 	uint32_t ipv6_frag;
-	uint32_t ipv4_ras;
+	uint32_t ipv4_ras;//是否开启ipv4分片重组
 	uint32_t ipv6_ras;
 	uint32_t mtu;
 	uint32_t metadata_size;
@@ -168,7 +168,7 @@ struct app_pktq_in_params {
 
 enum app_pktq_out_type {
 	APP_PKTQ_OUT_HWQ,//输出到硬件队列
-	APP_PKTQ_OUT_SWQ,
+	APP_PKTQ_OUT_SWQ,//输出到软件队列
 	APP_PKTQ_OUT_TM,
 	APP_PKTQ_OUT_SINK,
 };
@@ -424,7 +424,7 @@ struct app_eal_params {
 #endif
 
 uint8_t enable_hwlb;//启用rss hash
-uint8_t enable_flow_dir;
+uint8_t enable_flow_dir;//开启flow_dir
 
 #define APP_CORE_MASK_SIZE					\
 	(RTE_MAX_LCORE / 64 + ((RTE_MAX_LCORE % 64) ? 1 : 0))
@@ -434,8 +434,12 @@ struct app_params {
 	char app_name[APP_APPNAME_SIZE];//app名称（由argv[0]获取）
 	const char *config_file;//配置文件（-f参数给出）
 	const char *script_file;//脚本文件 (-s参数给出）
-	const char *parser_file;//如果需要预处理，则parser_file由config_file加后缀生成，否则等于config_file
-	const char *output_file;//最终配置文件（输出用,由config_file加后缀生成）
+	//如果需要预处理，则parser_file由config_file加后缀生成，否则等于config_file
+	//用于指出实际parser那个文件做为配置文件
+	const char *parser_file;
+	//最终配置文件（输出用,由config_file加后缀生成）
+	//用于指出实际生效的配置文件
+	const char *output_file;
 	const char *preproc;//预处理命令(通过--preproc给出）
 	const char *preproc_args;//（通过--preproc-args给出）
 	uint64_t port_mask;//通过(-p参数给出）
@@ -443,7 +447,7 @@ struct app_params {
 
 	struct app_eal_params eal_params;
 	struct app_mempool_params mempool_params[APP_MAX_MEMPOOLS];
-	struct app_link_params link_params[APP_MAX_LINKS];//接口信息
+	struct app_link_params link_params[APP_MAX_LINKS];//接口信息参数（由port_mask生成）
 	struct app_pktq_hwq_in_params hwq_in_params[APP_MAX_HWQ_IN];
 	struct app_pktq_hwq_out_params hwq_out_params[APP_MAX_HWQ_OUT];
 	struct app_pktq_swq_params swq_params[APP_MAX_PKTQ_SWQ];
@@ -465,8 +469,8 @@ struct app_params {
 	uint32_t n_msgq;
 	uint32_t n_pipelines;
 
-	uint32_t header_csum_req;//碍件checksum开启（通过--disable-hw-csum参数可关闭）
-	uint32_t n_hwlb_q;//（通过--hwlb 参数给出）
+	uint32_t header_csum_req;//硬件checksum开启（通过--disable-hw-csum参数可关闭）
+	uint32_t n_hwlb_q;//（通过--hwlb 参数给出） 硬件loadbalance队列大小
 	/* Init */
 	char *eal_argv[1 + APP_EAL_ARGC];
 	struct cpu_core_map *core_map;//系统可用的core情况
@@ -482,7 +486,7 @@ struct app_params {
 
 	int eal_argc;
 	uint32_t n_pipeline_types;
-	uint32_t n_cmds;
+	uint32_t n_cmds;//有多少个命令
 };
 
 //检查obj的name成员是否不为null

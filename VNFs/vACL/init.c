@@ -1289,8 +1289,11 @@ int app_init(struct app_params *app)
 	app_init_tm(app);
 	app_init_msgq(app);
 
+	//公共命令行注册
 	app_pipeline_common_cmd_push(app);
 	app_pipeline_thread_cmd_push(app);
+
+	//注册pipeline类型
 	app_pipeline_type_register(app, &pipeline_master);
 	app_pipeline_type_register(app, &pipeline_arpicmp);
 
@@ -1312,6 +1315,7 @@ int app_init(struct app_params *app)
 	return 0;
 }
 
+//注册命令行
 static int
 app_pipeline_type_cmd_push(struct app_params *app,
 	struct pipeline_type *ptype)
@@ -1332,13 +1336,14 @@ app_pipeline_type_cmd_push(struct app_params *app,
 
 	/* Check for available slots in the application commands array */
 	if (n_cmds > APP_MAX_CMDS - app->n_cmds)
-		return -ENOMEM;
+		return -ENOMEM;//命令行超限
 
 	/* Push pipeline commands into the application */
 	memcpy(&app->cmds[app->n_cmds],
 		cmds,
 		n_cmds * sizeof(cmdline_parse_ctx_t));
 
+	//设置回调参数
 	for (i = 0; i < n_cmds; i++)
 		app->cmds[app->n_cmds + i]->data = app;
 
@@ -1363,23 +1368,25 @@ app_pipeline_type_register(struct app_params *app, struct pipeline_type *ptype)
 		return -EINVAL;
 
 	/* Check for duplicate entry */
+	//pipeline是否已注册
 	for (i = 0; i < app->n_pipeline_types; i++)
 		if (strcmp(app->pipeline_type[i].name, ptype->name) == 0)
-			return -EEXIST;
+			return -EEXIST;//已注册
 
 	/* Check for resource availability */
 	n_cmds = pipeline_type_cmds_count(ptype);
 	if ((app->n_pipeline_types == APP_MAX_PIPELINE_TYPES) ||
 		(n_cmds > APP_MAX_CMDS - app->n_cmds))
-		return -ENOMEM;
+		return -ENOMEM;//pipeline类型已超限;pipeline命令行已超限
 
 	/* Copy pipeline type */
 	memcpy(&app->pipeline_type[app->n_pipeline_types++],
 		ptype,
-		sizeof(struct pipeline_type));
+		sizeof(struct pipeline_type));//完成pipline类型注册
 
 	/* Copy CLI commands */
 	if (n_cmds)
+		//有命令行，完成命令行注册
 		app_pipeline_type_cmd_push(app, ptype);
 
 	return 0;

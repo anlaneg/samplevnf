@@ -1542,6 +1542,7 @@ static cmdline_parse_ctx_t pipeline_common_cmds[] = {
 	NULL,
 };
 
+//注册pipeline的公共命令注册
 int
 app_pipeline_common_cmd_push(struct app_params *app)
 {

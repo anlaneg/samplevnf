@@ -25,14 +25,16 @@ main(int argc, char **argv)
 	rte_openlog_stream(stderr);
 
 	/* Config */
-	//处理配置
+	//初始化默认配置（缺省配置）
 	app_config_init(&app);
 
+	//命令行解析
 	app_config_args(&app, argc, argv);
 
 	//如果需要预处理，则采用app->preproc对配置文件进行预处理，生成app->parser_file
 	app_config_preproc(&app);
 
+	//配置文件解析（读取配置文件，完成pipeline，eal,txq等规定段的常规识别）
 	app_config_parse(&app, app.parser_file);
 
 	app_config_check(&app);//配置检查
