@@ -85,7 +85,7 @@ struct pipeline_cgnapt *global_pnat;
 uint64_t arp_pkts_mask;
 
 /* To know egress or ingress port */
-static uint8_t cgnapt_in_port_egress_prv[PIPELINE_MAX_PORT_IN];
+static uint8_t cgnapt_in_port_egress_prv[PIPELINE_MAX_PORT_IN];//用于标记某接口是否为私网接口
 static uint8_t cgnapt_prv_que_port_index[PIPELINE_MAX_PORT_IN];
 
 /* Max port per client declarations */
@@ -871,6 +871,7 @@ static uint8_t check_arp_icmp(
 		0x00, 0x00, 0x00, 0x01, 0xff, 0x00, 0x00, 0x00};
 
 	/* ARP outport number */
+	//将出接口强制规定为最后一个out-port
 	uint16_t out_port = p_nat->p.n_ports_out - 1;
 	uint8_t *protocol;
 	uint32_t prot_offset;
@@ -892,6 +893,7 @@ static uint8_t check_arp_icmp(
 		* Pkt mask should be changed, and not changing the
 		* drop mask
 		*/
+		//将此报文标记为无效报文
 		p_nat->invalid_packets |= pkt_mask;
 		p_nat->arpicmpPktCount++;
 
@@ -910,6 +912,7 @@ static uint8_t check_arp_icmp(
 			IP_HDR_PROTOCOL_OFST;
 		protocol = RTE_MBUF_METADATA_UINT8_PTR(pkt,
 			prot_offset);
+		//收到发往本接口的icmp报文，将其入队。
 		if ((*protocol == IP_PROTOCOL_ICMP) &&
 			link->ip == rte_be_to_cpu_32(*dst_addr)) {
 			//收到ip报文，且目的ip为入接口ip地址
@@ -2504,7 +2507,7 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
  * @return
  *  int that is not checked by caller
  */
-
+//私网接口收到报文
 static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 						struct rte_mbuf **pkts,
 						uint32_t n_pkts, void *arg)
@@ -2545,10 +2548,11 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 	for (; i < n_pkts; i++)
 		pkt_work_cgnapt_key_ipv4_prv(pkts[i], i, arg, p_nat);
 
+	//有些报文，比如icmp,arp已被处理，故自有效packets中移除
 	p_nat->valid_packets &= ~(p_nat->invalid_packets);
 
 	if (unlikely(p_nat->valid_packets == 0)) {
-		//无有效packets
+		//无有效packets，完成丢包统计
 		/* no suitable packet for lookup */
 		printf("no suitable valid packets\n");
 		rte_pipeline_ah_packet_drop(rte_p, p_nat->invalid_packets);
@@ -2581,6 +2585,7 @@ static int cgnapt_in_port_ah_ipv4_prv(struct rte_pipeline *rte_p,
 	/* prefetching for table entries should be done here */
 	for (j = 0; j < n_pkts; j++) {
 		if (p_nat->lkup_indx[j] >= 0)
+			//预取有效的实体表项
 			rte_prefetch0(&napt_hash_tbl_entries
 						[p_nat->lkup_indx[j]]);
 	}
@@ -2787,6 +2792,8 @@ static int cgnapt_in_port_ah_ipv4_pub(struct rte_pipeline *rte_p,
  *  A pointer to main CGNAPT structure
  *
  */
+//一次性处理4个报文，提取报文的{入接口，源ip,源port)
+//将其填充在p_nat->keys中
 void
 pkt4_work_cgnapt_key_ipv4_prv(
 	struct rte_mbuf **pkt,
@@ -2851,7 +2858,9 @@ pkt4_work_cgnapt_key_ipv4_prv(
 	#endif
 
 	if (enable_hwlb) {
+		//如果开启了硬件负载均衡，
 		if (!check_arp_icmp(pkt[0], pkt_mask0, p_nat))
+			//收到的是arp,icmp报文，已入队，直接转goto
 			goto PKT1;
 	}
 
@@ -2875,6 +2884,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 		}
 		#endif
 	}
+	//没有break,tcp,udp的port提取值的偏移是一样的
 	case IP_PROTOCOL_TCP:
 
 		src_port_offset0 = SRC_PRT_OFST_IP4_TCP;
@@ -2903,6 +2913,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 		goto PKT1;
 	}
 
+	//记录报文的入接口，报文的srcip,报文的srcport
 	key0.pid = phy_port0;
 	key0.ip = rte_bswap32(src_addr0);
 	key0.port = rte_bswap16(src_port0);
@@ -2912,6 +2923,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 		key0.port = 0xffff;
 	#endif
 
+	//填充keys
 	 memcpy(&p_nat->keys[pkt_num], &key0,
 				sizeof(struct pipeline_cgnapt_entry_key));
 	p_nat->key_ptrs[pkt_num] = &p_nat->keys[pkt_num];
@@ -3786,7 +3798,7 @@ pkt_work_cgnapt_ipv4_prv(
 
 	/*  apply napt and mac changes */
 	//按照entry要求实现报文变更
-	p_nat->entries[pkt_num] = &(entry->head);
+	p_nat->entries[pkt_num] = &(entry->head);//指定对应实体查询出的表项
 
 	uint32_t *src_addr =
 		RTE_MBUF_METADATA_UINT32_PTR(pkt, SRC_ADR_OFST_IP4);
@@ -3863,10 +3875,11 @@ pkt_work_cgnapt_ipv4_prv(
 	uint32_t nhip = 0;
 	struct arp_entry_data *ret_arp_data = NULL;
 	ret_arp_data = get_dest_mac_addr_port(dest_address,
-		 &dest_if, (struct ether_addr *)eth_dest);//取出arp选项
+		 &dest_if, (struct ether_addr *)eth_dest);//获取dest_address需要自哪个接口发送，下一跳的目的mac是什么
 	*outport_id = p_nat->outport_id[dest_if];//存放出接口
 
 	if (arp_cache_dest_mac_present(dest_if)) {
+		//如果有出接口的mac,则设置报文源mac地址
 		ether_addr_copy(get_link_hw_addr(dest_if),(struct ether_addr *)eth_src);
 		update_nhip_access(dest_if);
 		if (unlikely(ret_arp_data && ret_arp_data->num_pkts)) {
@@ -4133,6 +4146,7 @@ pkt_work_cgnapt_ipv4_pub(
 			* Destination Host unreachable
 			*/
 			if (protocol == IP_PROTOCOL_ICMP) {
+				//对icmp报文回复目标不可达消息
 				cgnapt_icmp_pkt = pkt;
 				send_icmp_dest_unreachable_msg();
 			}
@@ -4152,7 +4166,7 @@ pkt_work_cgnapt_ipv4_pub(
 			#ifdef CGNAPT_DEBUGGING
 			p_nat->naptDroppedPktCount3++;
 			#endif
-			return;
+			return;//如果未创建成功table_entry,则此处返回
 		}
 
 		entry = (struct cgnapt_table_entry *)table_entry;
@@ -4171,6 +4185,7 @@ pkt_work_cgnapt_ipv4_pub(
 	uint16_t dst_port_offset = 0;
 
 	if ((protocol == IP_PROTOCOL_TCP) || (protocol == IP_PROTOCOL_UDP)) {
+		//tcp,udp的端口offset是一样的
 		src_port_offset = SRC_PRT_OFST_IP4_TCP;
 		dst_port_offset = DST_PRT_OFST_IP4_TCP;
 	} else if (protocol == IP_PROTOCOL_ICMP) {
@@ -4572,6 +4587,7 @@ pkt4_work_cgnapt_ipv4_prv(
 		}
 		#endif
 
+		//依据不同协议，取不同的src-port,dst-port
 		switch (protocol) {
 		case IP_PROTOCOL_TCP:
 			src_port_offset = SRC_PRT_OFST_IP4_TCP;
@@ -4668,6 +4684,8 @@ pkt4_work_cgnapt_ipv4_prv(
 					 (struct ether_addr *)eth_dest, *outport_id);
 			}
 
+			//XXX 需要在此处添加代码来进行流表加速
+			//
 		} else {
 
 			if (unlikely(ret_arp_data == NULL)) {
@@ -4710,12 +4728,12 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		{
 			/* Egress */
-			*src_addr = rte_bswap32(entry->data.pub_ip);//填写转换后地址
+			*src_addr = rte_bswap32(entry->data.pub_ip);//填写转换后srcip地址
 
 			#ifdef NAT_ONLY_CONFIG_REQ
 			if (!nat_only_config_flag) {
 			#endif
-				*src_port = rte_bswap16(entry->data.pub_port);//填写转换后port
+				*src_port = rte_bswap16(entry->data.pub_port);//填写转换后srcport地址
 			#ifdef NAT_ONLY_CONFIG_REQ
 			}
 			#endif
@@ -4861,6 +4879,7 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		p_nat->naptedPktCount++;
 
+		//修改checksum
 		#ifdef CHECKSUM_REQ
 			if (p_nat->hw_checksum_reqd)
 				hw_checksum(pkt, pkt_type);
@@ -7658,7 +7677,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 	/* To drop the packet */
 	uint64_t drop_mask = 0;
 
-	//如果只有静态cgnat,且没有匹配上，则直接丢掉
+	//如果只有静态cgnat,且没有匹配上，则将这些报文标记为丢弃
 	if (p_nat->is_static_cgnapt) {
 		drop_mask |= 1LLU << pkt_num;
 		p_nat->missedPktCount++;
@@ -7670,6 +7689,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 	}
 
 	if (rte_be_to_cpu_16(*eth_proto) == ETHER_TYPE_IPv6) {
+		//取ipv6源地址
 		src_addr =
 			RTE_MBUF_METADATA_UINT8_PTR(pkt, src_addr_offset_ipv6);
 		pkt_type = CGNAPT_ENTRY_IPV6;
@@ -7690,6 +7710,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 				src_addr_ipv6, &err);
 
 		if (!(*table_entry)) {
+			//创建动态表项失败，丢弃
 			if (err) {
 				drop_mask |= 1LLU << pkt_num;
 				p_nat->missedPktCount++;
@@ -7711,7 +7732,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 		}
 
 	} else if (!is_phy_port_privte(phy_port)) {
-
+		//不容许public口主动发起连接，丢弃
 		#ifdef CGNAPT_DBG_PRNT
 		if (CGNAPT_DEBUG >= 2) {
 			printf("Initial Ingress entry creation NOT ALLOWED "
@@ -7726,7 +7747,7 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 		p_nat->missedpktcount3++;
 		#endif
 	} else {
-
+		//存在接口即不是public,也不是private,丢弃
 		#ifdef CGNAPT_DBG_PRNT
 		if (CGNAPT_DEBUG > 1)
 			printf("NOT a PRIVATE or PUBLIC port!!!!!\n");
@@ -7865,6 +7886,7 @@ pipeline_cgnapt_parse_args(struct pipeline_cgnapt *p,
 				cgnapt_prv_que_port_index[n_prv_in_port++] =
 							rxport;
 				if (rxport < PIPELINE_MAX_PORT_IN)
+				//此接口向外去为私网
 				cgnapt_in_port_egress_prv[rxport] = 1;
 				token = strtok(NULL, ",");
 			}
@@ -8425,7 +8447,7 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			.arg_create =
 				pipeline_port_in_params_convert(&params->port_in
 								[i]),
-			.f_action = cgnapt_in_port_ah_mix,
+			.f_action = cgnapt_in_port_ah_mix,//默认回调
 			.arg_ah = &(ap[i]),
 			.burst_size = params->port_in[i].burst_size,//rx的burst_size
 		};
@@ -8441,15 +8463,16 @@ static void *pipeline_cgnapt_init(struct pipeline_params *params, void *arg)
 			/* Multiport changes */
 			if (cgnapt_in_port_egress_prv[i]) {
 				port_params.f_action =
-					cgnapt_in_port_ah_ipv4_prv;
+					cgnapt_in_port_ah_ipv4_prv;//此接口将收到私有网络流量（实现私有地址向public地址的转换）
 				printf("CGNAPT port %d is IPv4 Prv\n", i);
 			} else{
 				port_params.f_action =
-					cgnapt_in_port_ah_ipv4_pub;
+					cgnapt_in_port_ah_ipv4_pub;//此接口将收到公有网络流量（实现public地址向私有地址转换）
 				printf("CGNAPT port %d is IPv4 Pub\n", i);
 			}
 		}
 
+		//接口ipv6处理
 		if (p_nat->traffic_type == TRAFFIC_TYPE_IPV6) {
 			if (cgnapt_in_port_egress_prv[i]) {
 				port_params.f_action =

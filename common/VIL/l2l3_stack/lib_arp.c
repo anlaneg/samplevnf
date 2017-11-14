@@ -339,6 +339,7 @@ uint32_t get_nd_buf(void)
 	return nd_buffer;
 }
 
+//检查arp缓存的硬件地址是否有效
 uint8_t arp_cache_dest_mac_present(uint32_t out_port)
 {
         return p_arp_data->arp_cache_hw_laddr_valid[out_port];
@@ -368,15 +369,17 @@ void print_trace(void)
 	free(strings);
 }
 
+//找出目的ip对应的下一跳，出接口及下一跳目的mac
 uint32_t get_nh(uint32_t ip, uint32_t *port, struct ether_addr *addr)
 {
 	int i = 0;
 	for (i = 0; i < p_arp_data->lib_arp_route_ent_cnt; i++) {
 		if ((p_arp_data->lib_arp_route_table[i].nh_mask) ==
 				 (ip & p_arp_data->lib_arp_route_table[i].mask)) {
-
+			//网段相同则进入
 			*port = p_arp_data->lib_arp_route_table[i].port;
 			if (arp_cache_dest_mac_present(*port))
+				//取出下一跳地址对应的mac
 				ether_addr_copy(
 				get_local_link_hw_addr(*port,
 				p_arp_data->lib_arp_route_table[i].nh), addr);
@@ -786,9 +789,11 @@ static int add_arp_data(struct arp_key_ipv4 *arp_key,
         ret = rte_hash_lookup_data(arp_hash_handle, arp_key, (void **)&tmp_arp_data);
 
         if (ret == -ENOENT) {
+        	//arp表中没有查找到，在表中添加些表项（key,value)模式
                 /* entry not yet added, do so now */
                 ret = rte_hash_add_key_data(arp_hash_handle, arp_key, ret_arp_data);
                 if (ret) {
+                	//添加失败，挂掉
                         /* We panic here because either:
                          * ret == -EINVAL and a parameter got messed up, or
                          * ret == -ENOSPC and the hash table isn't big enough
@@ -798,12 +803,14 @@ static int add_arp_data(struct arp_key_ipv4 *arp_key,
                                         rte_strerror(abs(ret)));
                 }
         } else if (ret < 0) {
+        	//查询出错，挂掉（应为参数有误）
                 /* We panic here because ret == -EINVAL and a parameter got
                  * messed up, or dpdk hash lib changed and this needs corrected */
                 rte_panic("ARP: Error on entry add for %s - %s",
                                 inet_ntoa(*(struct in_addr *)&arp_key->ip),
                                 rte_strerror(abs(ret)));
         } else {
+        	//已存在
                 /* entry already exists */
                 ret = EEXIST;
         }
@@ -822,10 +829,12 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
 	int ret = rte_hash_lookup_data(arp_hash_handle, &arp_key,
 							 (void **)&ret_arp_data);
 	if (ret < 0 && (mode == DYNAMIC_ARP)) {
+		//arp表中无此信息，且为动态arp,刚创建不完全的arp表项
 	        if (ARPICMP_DEBUG)
 			RTE_LOG(INFO, LIBARP, "ARP entry not found for ip 0x%x\n",
 				arp_key.ip);
 
+	    //创建不完全的arp表项
 		/* add INCOMPLETE arp entry */
 		ret_arp_data = rte_malloc_socket(NULL, sizeof(struct arp_entry_data),
 				RTE_CACHE_LINE_SIZE, rte_socket_id());
@@ -842,6 +851,7 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
 		ret = add_arp_data(&arp_key, ret_arp_data);
 
 		if (ret == EEXIST) {
+			//其它线程已加入
 			rte_rwlock_write_unlock(&ret_arp_data->queue_lock);
 			rte_free(ret_arp_data);
 			/* Some other thread has 'beat' this thread in
@@ -849,6 +859,7 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
                         return NULL;
 		}
 
+		//为arp表项，出队一个timer
                 if (rte_mempool_get(timer_mempool_arp,
 			(void **) &(ret_arp_data->timer) ) < 0) {
 			rte_rwlock_write_unlock(&ret_arp_data->queue_lock);
@@ -856,6 +867,7 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
                         return NULL;
                 }
 
+        //申请空间，为arp保存缓存报文用
 		ret_arp_data->buf_pkts = (struct rte_mbuf **)rte_zmalloc_socket(
 					NULL, sizeof(struct rte_mbuf *) * arp_buffer,
 					RTE_CACHE_LINE_SIZE, rte_socket_id());
@@ -866,19 +878,20 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
                         return NULL;
 		}
 
+		//初始化timer,并设置arp表项的超时回调
                 rte_timer_init(ret_arp_data->timer);
                 struct arp_timer_key * callback_key =
 			 (struct arp_timer_key*) rte_malloc(NULL,
-                               sizeof(struct  arp_timer_key*),RTE_CACHE_LINE_SIZE);
+                               sizeof(struct  arp_timer_key*),RTE_CACHE_LINE_SIZE);//申请回调参数
                 callback_key->port_id = arp_key.port_id;
                 callback_key->ip = arp_key.ip;
                 if(ARPICMP_DEBUG)
                       RTE_LOG(INFO, LIBARP,"TIMER STARTED FOR %u seconds\n",
 			ARP_TIMER_EXPIRY);
                 if(rte_timer_reset(ret_arp_data->timer,
-                                        (PROBE_TIME * rte_get_tsc_hz() / 1000),
+                                        (PROBE_TIME * rte_get_tsc_hz() / 1000),//默认50S
                                         SINGLE,timer_lcore,
-                                        arp_timer_callback,
+                                        arp_timer_callback,//超时回调
                                         callback_key) < 0)
                         if(ARPICMP_DEBUG)
                         RTE_LOG(INFO, LIBARP,"Err : Timer already running\n");
@@ -886,11 +899,13 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
                 ret_arp_data->timer_key = callback_key;
 
 		/* send arp request */
+        //向外发送arp请求
 		request_arp(arp_key.port_id, arp_key.ip);
 		rte_rwlock_write_unlock(&ret_arp_data->queue_lock);
 	} else {
 		if (ret_arp_data &&
 		 ret_arp_data->mode == DYNAMIC_ARP && ret_arp_data->status == STALE) {
+			//遇到已过期的arp表项,将其置为无效，置为probe状态
 			rte_rwlock_write_lock(&ret_arp_data->queue_lock);
 			ether_addr_copy(&null_ether_addr, &ret_arp_data->eth_addr);
 			ret_arp_data->status = PROBE;
@@ -902,6 +917,7 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
 			if(ARPICMP_DEBUG)
 				RTE_LOG(INFO, LIBARP,"TIMER STARTED FOR %u"
 					" seconds\n",ARP_TIMER_EXPIRY);
+			//重置定时器
 			if(rte_timer_reset(ret_arp_data->timer,
                                         (arp_timeout * rte_get_tsc_hz()),
                                         SINGLE,timer_lcore,
@@ -913,6 +929,7 @@ struct arp_entry_data *retrieve_arp_entry(struct arp_key_ipv4 arp_key, uint8_t m
 			ret_arp_data->timer_key = callback_key;
 
 			/* send arp request */
+			//发送arp请求
 			request_arp(arp_key.port_id, arp_key.ip);
 			rte_rwlock_write_unlock(&ret_arp_data->queue_lock);
 		}
@@ -1161,6 +1178,7 @@ void print_nd_table(void)
 	printf("ND table key len is %lu\n\n", sizeof(struct nd_key_ipv6));
 }
 
+//移除arp表项
 void remove_arp_entry(struct arp_entry_data *ret_arp_data, void *arg)
 {
 
@@ -1303,8 +1321,8 @@ populate_arp_entry(const struct ether_addr *hw_addr, uint32_t ipaddr,
 {
 	struct arp_key_ipv4 arp_key;
 	struct arp_entry_data *new_arp_data;
-	arp_key.port_id = portid;
-	arp_key.ip = ipaddr;
+	arp_key.port_id = portid;//哪个接口收到的
+	arp_key.ip = ipaddr;//关于谁的mac地址
 	arp_key.filler1 = 0;
 	arp_key.filler2 = 0;
 	arp_key.filler3 = 0;
@@ -1316,6 +1334,7 @@ populate_arp_entry(const struct ether_addr *hw_addr, uint32_t ipaddr,
 		RTE_LOG(INFO, LIBARP, "populate_arp_entry ip %x, port %d\n",
 			arp_key.ip, arp_key.port_id);
 
+	//获取arp表项或者创建一个arp表项
 	new_arp_data = retrieve_arp_entry(arp_key, mode);
 	if (new_arp_data && ((new_arp_data->mode == STATIC_ARP
 		&& mode == DYNAMIC_ARP) || (new_arp_data->mode == DYNAMIC_ARP
@@ -1345,6 +1364,7 @@ populate_arp_entry(const struct ether_addr *hw_addr, uint32_t ipaddr,
 			rte_rwlock_write_lock(&new_arp_data->queue_lock);
 			new_arp_data->retry_count = 0;	// Reset
 			if (new_arp_data->status == STALE) {
+				//对过期的表项进行重新探测
 				new_arp_data->status = PROBE;
 				if (ifm_chk_port_ipv4_enabled
 					(new_arp_data->port)) {
@@ -1359,6 +1379,7 @@ populate_arp_entry(const struct ether_addr *hw_addr, uint32_t ipaddr,
 				}
 			}
 
+			//重置定时器
 			if (rte_timer_reset(new_arp_data->timer,
 						(arp_timeout * rte_get_tsc_hz()),
 						SINGLE, timer_lcore,
@@ -1372,6 +1393,7 @@ populate_arp_entry(const struct ether_addr *hw_addr, uint32_t ipaddr,
 			return;
 		} else {
 			rte_rwlock_write_lock(&new_arp_data->queue_lock);
+			//更新arp表项，置为完全，
 			ether_addr_copy(hw_addr, &new_arp_data->eth_addr);
 			if ((new_arp_data->status == INCOMPLETE) ||
 				(new_arp_data->status == PROBE)) {
@@ -1691,26 +1713,29 @@ void request_arp(uint8_t port_id, uint32_t ip)
 	}
 	eth_h = rte_pktmbuf_mtod(arp_pkt, struct ether_hdr *);
 
+	//目的mac设置为广播mac,源mac设置为出接口mac地址，指明报文类型为arp报文
 	ether_addr_copy(&broadcast_ether_addr, &eth_h->d_addr);
 	ether_addr_copy((struct ether_addr *)
 			&link->macaddr[0], &eth_h->s_addr);
 	eth_h->ether_type = CHECK_ENDIAN_16(ETHER_TYPE_ARP);
 
+	//填充arp报文
 	arp_h = (struct arp_hdr *)((char *)eth_h + sizeof(struct ether_hdr));
-	arp_h->arp_hrd = CHECK_ENDIAN_16(ARP_HRD_ETHER);
-	arp_h->arp_pro = CHECK_ENDIAN_16(ETHER_TYPE_IPv4);
-	arp_h->arp_hln = ETHER_ADDR_LEN;
-	arp_h->arp_pln = sizeof(uint32_t);
-	arp_h->arp_op = CHECK_ENDIAN_16(ARP_OP_REQUEST);
+	arp_h->arp_hrd = CHECK_ENDIAN_16(ARP_HRD_ETHER);//指明以太网地址
+	arp_h->arp_pro = CHECK_ENDIAN_16(ETHER_TYPE_IPv4);//指明ipv4地址
+	arp_h->arp_hln = ETHER_ADDR_LEN;//指明以太网地址长度
+	arp_h->arp_pln = sizeof(uint32_t);//指明协议地址长度
+	arp_h->arp_op = CHECK_ENDIAN_16(ARP_OP_REQUEST);//指明arp操作类型（请求）
 
 	if (link && link->ipv4_list) {
+		//如果有多个ipv4地址，则源ip用首个ipv4地址（这里实际上应进行选源，选择和被请求方在同一网段的地址）
 		arp_h->arp_data.arp_sip =
 				(((ipv4list_t *) (link->ipv4_list))->ipaddr);
 	}
 	ether_addr_copy((struct ether_addr *)
-			&link->macaddr[0], &arp_h->arp_data.arp_sha);
-	ether_addr_copy(&null_ether_addr, &arp_h->arp_data.arp_tha);
-	arp_h->arp_data.arp_tip = rte_cpu_to_be_32(ip);
+			&link->macaddr[0], &arp_h->arp_data.arp_sha);//请求方mac地址
+	ether_addr_copy(&null_ether_addr, &arp_h->arp_data.arp_tha);//被请求方mac地址置０
+	arp_h->arp_data.arp_tip = rte_cpu_to_be_32(ip);//填充被请求方ip地址
 	if (ARPICMP_DEBUG)
 		RTE_LOG(INFO, LIBARP, "arp tip:%x arp sip :%x\n",
 			arp_h->arp_data.arp_tip, arp_h->arp_data.arp_sip);
@@ -1723,11 +1748,13 @@ void request_arp(uint8_t port_id, uint32_t ip)
 		print_mbuf("TX", port_id, arp_pkt, __LINE__);
 	}
 	if (link)
+		//向外发送arp请求报文
 		link->transmit_single_pkt(link, arp_pkt);
 //	start_tsc[port_id] = rte_rdtsc();
 	printf("Sent ARP Request %x \n", arp_h->arp_data.arp_tip);
 }
 
+//自port_id向ip地址发送icmp echo报文
 struct rte_mbuf *request_echo(uint32_t port_id, uint32_t ip)
 {
 	struct ether_hdr *eth_h;
@@ -1743,34 +1770,40 @@ struct rte_mbuf *request_echo(uint32_t port_id, uint32_t ip)
 		return NULL;
 	}
 
+	//暂时不填写以太头
 	eth_h = rte_pktmbuf_mtod(icmp_pkt, struct ether_hdr *);
 
+	//偏移到ip头，偏移到icmp头
 	ip_h = (struct ipv4_hdr *)((char *)eth_h + sizeof(struct ether_hdr));
 	icmp_h = (struct icmp_hdr *)((char *)ip_h + sizeof(struct ipv4_hdr));
 
-	ip_h->version_ihl = IP_VHL_DEF;
+	ip_h->version_ihl = IP_VHL_DEF;//指明ipv4,头部长度20字节
 	ip_h->type_of_service = 0;
 	ip_h->total_length =
-			rte_cpu_to_be_16(sizeof(struct ipv4_hdr) + sizeof(struct icmp_hdr));
-	ip_h->packet_id = 0xaabb;
-	ip_h->fragment_offset = 0x0000;
-	ip_h->time_to_live = 64;
-	ip_h->next_proto_id = IPPROTO_ICMP;
+			rte_cpu_to_be_16(sizeof(struct ipv4_hdr) + sizeof(struct icmp_hdr));//指明总长度为ip头＋icmp头
+	ip_h->packet_id = 0xaabb;//给出id号
+	ip_h->fragment_offset = 0x0000;//标明非分片
+	ip_h->time_to_live = 64;//指明ttl
+	ip_h->next_proto_id = IPPROTO_ICMP;//标记下层为icmp协议
 	if (port && port->ipv4_list)
+		//将第一个ip定为发送方ip
 		ip_h->src_addr =
 				rte_cpu_to_be_32(((ipv4list_t *) port->ipv4_list)->ipaddr);
-	ip_h->dst_addr = rte_cpu_to_be_32(ip);
+	ip_h->dst_addr = rte_cpu_to_be_32(ip);//填充目的ip地址
 
 	ip_h->hdr_checksum = 0;
-	ip_h->hdr_checksum = rte_ipv4_cksum(ip_h);
+	ip_h->hdr_checksum = rte_ipv4_cksum(ip_h);//计算ip层checksum
 
+	//填充icmp echo头部
 	icmp_h->icmp_type = IP_ICMP_ECHO_REQUEST;
 	icmp_h->icmp_code = 0;
 	icmp_h->icmp_ident = 0xdead;
 	icmp_h->icmp_seq_nb = 0xbeef;
 
+	//计算icmp的checksum
 	icmp_h->icmp_cksum = ~rte_raw_cksum(icmp_h, sizeof(struct icmp_hdr));
 
+	//指明报文总长度
 	icmp_pkt->pkt_len =
 			sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) +
 			sizeof(struct icmp_hdr);
@@ -1778,7 +1811,7 @@ struct rte_mbuf *request_echo(uint32_t port_id, uint32_t ip)
 
 	print_mbuf("TX", 0, icmp_pkt, __LINE__);
 
-	return icmp_pkt;
+	return icmp_pkt;//返回构造好的报文（以太头未填充）
 }
 
 void
@@ -1821,14 +1854,16 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 	uint32_t req_tip;
 	eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
 
-	//arp报文
 	if (eth_h->ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+		//收到的报文为arp报文
 		if (ARPICMP_DEBUG)
 			RTE_LOG(INFO, LIBARP, "%s, portid %u. Line %d\n\r",
 				__FUNCTION__, port->pmdid, __LINE__);
+		//提取arp报文头
 		arp_h =
 				(struct arp_hdr *)((char *)eth_h +
 							 sizeof(struct ether_hdr));
+		//arp格式检查（只支持以太地址响应，只支持ipv4地址请求)
 		if (CHECK_ENDIAN_16(arp_h->arp_hrd) != ARP_HRD_ETHER)
 			RTE_LOG(INFO, LIBARP,
 				"Invalid hardware format of hardware address - not processing ARP req\n");
@@ -1842,6 +1877,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 			RTE_LOG(INFO, LIBARP,
 				"Invalid protocol address length - not processing ARP req\n");
 		else {
+			//报文可以被处理，检查自身是否配置有ip,如果无ip不响应arp,丢包
 			if (port->ipv4_list == NULL) {
 				RTE_LOG(INFO, LIBARP,
 					"Ports IPV4 List is NULL.. Unable to Process\n");
@@ -1852,7 +1888,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 					((ipv4list_t *) (port->ipv4_list))->ipaddr) {
 				if (arp_h->arp_data.arp_tip == arp_h->arp_data.arp_sip) {
 					printf("gratuitous arp received\n");
-					//收到免费arp
+					//收到一个别人发的免费arp，添加arp表项
 					populate_arp_entry(
 							(struct ether_addr *)&arp_h->arp_data.arp_sha,
 							rte_cpu_to_be_32(arp_h->arp_data.arp_sip),
@@ -1860,7 +1896,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 							DYNAMIC_ARP);
 
 				} else {
-					//丢弃掉非本接口ip
+					//本接口发送出了一个arp请求，但这个arp请求，被传回给我自已，丢弃
 		   if (ARPICMP_DEBUG)
 					    RTE_LOG(INFO, LIBARP,"ARP requested IP address mismatches interface IP - discarding\n");
 				}
@@ -1869,7 +1905,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 			//                               processing of replies to destination ip = this ip
 			else if (arp_h->arp_op ==
 				 rte_cpu_to_be_16(ARP_OP_REQUEST)) {
-				//arp请求
+				//收到arp请求
 				if (ARPICMP_DEBUG) {
 					RTE_LOG(INFO, LIBARP,
 						"%s, portid %u. Line %d\n\r",
@@ -1884,6 +1920,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 					print_mbuf("RX", in_port_id, pkt,
 							 __LINE__);
 				}
+				//学习对方信息，填充arp表项
 				populate_arp_entry((struct ether_addr *)
 							 &arp_h->arp_data.arp_sha,
 							 rte_cpu_to_be_32
@@ -1920,6 +1957,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 					print_mbuf("RX", port->pmdid, pkt,
 							 __LINE__);
 				}
+				//收到arp响应，学习表项
 				populate_arp_entry((struct ether_addr *)
 							 &arp_h->arp_data.arp_sha,
 							 rte_bswap32(arp_h->
@@ -1944,8 +1982,6 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 				(struct icmp_hdr *)((char *)ip_h + sizeof(struct ipv4_hdr));
 
 		if (eth_h->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
-			//收到icmp报文
-
 			if (ip_h->next_proto_id != IPPROTO_ICMP) {
 				if (ARPICMP_DEBUG) {
 					RTE_LOG(INFO, LIBARP,
@@ -1962,6 +1998,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 						"Unknown IHL - discarding\n");
 				}
 			} else {
+				//收到icmp报文
 				if (icmp_h->icmp_type == IP_ICMP_ECHO_REQUEST
 						&& icmp_h->icmp_code == 0) {
 					if (ARPICMP_DEBUG)
@@ -1980,6 +2017,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 							__FUNCTION__,
 							port->pmdid, __LINE__);
 
+					//目的ip是组播地址
 					if (is_multicast_ipv4_addr
 							(ip_h->dst_addr)) {
 						uint32_t ip_src;
@@ -2016,6 +2054,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 						ip_h->dst_addr = ip_addr;
 					}
 
+					//响应echo
 					icmp_h->icmp_type = IP_ICMP_ECHO_REPLY;
 					cksum = ~icmp_h->icmp_cksum & 0xffff;
 					cksum +=
@@ -2041,6 +2080,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 				} else if (icmp_h->icmp_type ==
 						 IP_ICMP_ECHO_REPLY
 						 && icmp_h->icmp_code == 0) {
+					//收到reply报文
 					if (ARPICMP_DEBUG)
 						print_mbuf("RX", in_port_id,
 								 pkt, __LINE__);
@@ -2053,6 +2093,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 					arp_key.filler2 = 0;
 					arp_key.filler3 = 0;
 
+					//这个更改有点多管闲事
 					struct arp_entry_data *arp_entry =
 							retrieve_arp_entry(arp_key,
 								 DYNAMIC_ARP);
@@ -2637,11 +2678,13 @@ struct ether_addr *get_nd_local_link_hw_addr(uint8_t out_port, uint8_t nhip[])
 	return x;
 }
 
+//给出out_port,取此port上缓存的nhip对应的mac地址
 struct ether_addr *get_local_link_hw_addr(uint8_t out_port, uint32_t nhip)
 {
         int i, limit;
 	uint32_t tmp;
         struct ether_addr *x = NULL;
+        //out_port向外有num_nhip个下一跳,遍历每个下一跳，如果与nhip相同，则取其mac地址
         limit = p_arp_data->arp_local_cache[out_port].num_nhip;
         for (i=0; i < limit; i++) {
                 tmp = p_arp_data->arp_local_cache[out_port].nhip[i];
@@ -2675,6 +2718,7 @@ void lib_arp_init(struct pipeline_params *params,
 	}
 
 	/* acquire the mac addresses */
+	//提取各设备mac地址
 	struct ether_addr hw_addr;
 	uint8_t nb_ports = rte_eth_dev_count();
 
@@ -2809,16 +2853,20 @@ void arp_timer_callback(struct rte_timer *timer, void *arg)
 		RTE_LOG(INFO, LIBARP, "ARP TIMER callback : expire :%d now:%ld\n",
 			(int)timer->expire, now);
 	if (ret < 0) {
+		//没有查到此项
 		printf("Should not have come here\n");
 		return;
 	} else {
 		if (ret_arp_data->mode == DYNAMIC_ARP) {
+			//是动态arp,检查状态
 			rte_rwlock_write_lock(&ret_arp_data->queue_lock);
 			if (ret_arp_data->status == PROBE ||
 				ret_arp_data->status == INCOMPLETE) {
 				if (ret_arp_data->retry_count == 3) {
+					//探测多次后仍不完全，将arp表项移除
 					remove_arp_entry(ret_arp_data, arg);
 				} else {
+					//重试次数增加
 					ret_arp_data->retry_count++;
 
 					if (ARPICMP_DEBUG) {
@@ -2833,9 +2881,11 @@ void arp_timer_callback(struct rte_timer *timer, void *arg)
 
 					if (ifm_chk_port_ipv4_enabled
 						(ret_arp_data->port)) {
+						//如果此接口是enable的，则对外发送arp请求
 						request_arp(ret_arp_data->port,
 								ret_arp_data->ip);
 					} else {
+						//接口未enable,无法发送arp请求
 						if (ARPICMP_DEBUG)
 							RTE_LOG(INFO, LIBARP,
 							"%s: IP is not enabled on port %u"
@@ -2844,6 +2894,7 @@ void arp_timer_callback(struct rte_timer *timer, void *arg)
 							ret_arp_data->port);
 					}
 
+					//再次设置arp定时器
 					if (rte_timer_reset(ret_arp_data->timer,
 								(PROBE_TIME *
 								 rte_get_tsc_hz()/ 1000),
@@ -2857,8 +2908,10 @@ void arp_timer_callback(struct rte_timer *timer, void *arg)
 
 				}
 			} else if (ret_arp_data->status == COMPLETE) {
+				//arp表项是完全的
 				if (now <= (ret_arp_data->n_confirmed +
 					 (arp_timeout * rte_get_tsc_hz()))) {
+					//如果未过期，则重置定时器
 					if (rte_timer_reset(ret_arp_data->timer,
 								(arp_timeout *
 								 rte_get_tsc_hz()), SINGLE,
@@ -2879,12 +2932,14 @@ void arp_timer_callback(struct rte_timer *timer, void *arg)
 						RTE_LOG(INFO, LIBARP,
 							"Err : Timer already running\n");
 				} else {
+					//arp表项已超时，置为过期
 					ret_arp_data->status = STALE;
 					p_arp_data->arp_cache_hw_laddr_valid[ret_arp_data->port] = 0;
 				}
 			}
 			rte_rwlock_write_unlock(&ret_arp_data->queue_lock);
 		} else {
+			//删除arp表项
 			rte_hash_del_key(arp_hash_handle, &arp_key);
 		}
 	}

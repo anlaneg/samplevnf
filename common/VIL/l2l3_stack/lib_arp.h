@@ -39,19 +39,19 @@
 */
 
 struct lib_arp_route_table_entry {
-	uint32_t ip;	/**< Ipv4 address*/
-	uint32_t mask;	/**< mask */
-	uint32_t port;	/**< Physical port */
-	uint32_t nh;	/**< next hop */
-	uint32_t nh_mask;
+	uint32_t ip;	/**< Ipv4 address*/　//本端ip
+	uint32_t mask;	/**< mask */　//本端掩码
+	uint32_t port;	/**< Physical port */ //出接口
+	uint32_t nh;	/**< next hop */ //下一跳ip
+	uint32_t nh_mask;//网段掩码
 };
 
 #define MAX_LOCAL_MAC_ADDRESS	       32
 #define MAX_PORTS                      32
 struct arp_cache {
-        uint32_t nhip[MAX_LOCAL_MAC_ADDRESS];
-        struct ether_addr link_hw_laddr[MAX_LOCAL_MAC_ADDRESS];
-        uint32_t num_nhip;
+        uint32_t nhip[MAX_LOCAL_MAC_ADDRESS];//下一跳
+        struct ether_addr link_hw_laddr[MAX_LOCAL_MAC_ADDRESS];//下一跳的mac地址
+        uint32_t num_nhip;//有多少个下一跳
 };
 
 struct nd_cache {
@@ -167,16 +167,24 @@ extern uint32_t NDIPV6_DEBUG;  /**< ND IPv6 */
 */
 
 struct arp_entry_data {
+	//目的mac地址
 	struct ether_addr eth_addr; /**< ethernet address */
+	//ip地址
 	uint32_t ip;				/**< IP address */
+	//自哪个接口学习到的
 	uint8_t port;				/**< Port */
+	//表项当前状态（完全，不完全，探测，过期）
 	uint8_t status;				/**< Status of entry */
+	//什么类型的表项（静态的，动态的）
 	uint8_t mode;				/**< Mode */
 	uint8_t retry_count;			/**< retry count for ARP*/
+	//此arp关联的定时器
 	struct rte_timer *timer;    /**< Timer Associated with ARP*/
 	struct arp_timer_key *timer_key;
         rte_rwlock_t queue_lock;    /** queue lock */
-	struct rte_mbuf **buf_pkts;
+    //用于缓存报文
+	struct rte_muf **buf_pkts;
+	//当前在此表项上缓存有多少个报文
 	uint32_t num_pkts;
 	uint64_t n_confirmed;
 } __attribute__ ((packed));
@@ -230,14 +238,14 @@ struct table_nd_entry_data {
 struct arp_data {
 	struct lib_arp_route_table_entry
             lib_arp_route_table[MAX_ARP_RT_ENTRY];
-	uint8_t lib_arp_route_ent_cnt;
+	uint8_t lib_arp_route_ent_cnt;//lib_arp_route_table表的已用表项数目
 	struct lib_nd_route_table_entry
             lib_nd_route_table[MAX_ARP_RT_ENTRY];
 	uint8_t lib_nd_route_ent_cnt;
-	struct arp_cache arp_local_cache[MAX_PORTS];
+	struct arp_cache arp_local_cache[MAX_PORTS];//按出接口划分的arp信息缓存表
 	struct nd_cache nd_local_cache[MAX_PORTS];
-	struct ether_addr link_hw_addr[MAX_LOCAL_MAC_ADDRESS];
-	uint32_t link_hw_addr_array_idx;
+	struct ether_addr link_hw_addr[MAX_LOCAL_MAC_ADDRESS];//本机各port对应的mac地址
+	uint32_t link_hw_addr_array_idx;//本机各port对应mac地址表大小
 	uint8_t arp_cache_hw_laddr_valid[MAX_LOCAL_MAC_ADDRESS];
 	uint8_t nd_cache_hw_laddr_valid[MAX_LOCAL_MAC_ADDRESS];
 	uint64_t update_tsc[MAX_LOCAL_MAC_ADDRESS];
