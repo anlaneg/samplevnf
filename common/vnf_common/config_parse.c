@@ -30,14 +30,16 @@
 #include <rte_string_fns.h>
 
 #include "app.h"
+#include "version.h"
 #include "parser.h"
 
 /**
  * Default config values
  **/
+uint32_t rest_support = 1;
 
 static struct app_params app_params_default = {
-	.config_file = "./config/ip_pipeline.cfg",
+	.config_file = "./ip_pipeline.cfg",
 	.log_level = APP_LOG_LEVEL_HIGH,
 	.port_mask = 0,
 
@@ -200,8 +202,8 @@ struct app_pipeline_params default_pipeline_params = {
 };
 
 static const char app_usage[] =
-	"Usage: %s [-f CONFIG_FILE] [-s SCRIPT_FILE] [-p PORT_MASK] "
-	"[-l LOG_LEVEL] [--preproc PREPROCESSOR] [--preproc-args ARGS]\n"
+	"Usage: %s [--version] [-f CONFIG_FILE] [-s SCRIPT_FILE] [-p PORT_MASK] "
+	"[-l LOG_LEVEL] [--disable-hw-csum] [--preproc PREPROCESSOR] [--preproc-args ARGS]\n"
 	"\n"
 	"Arguments:\n"
 	"\t-f CONFIG_FILE: Default config file is %s\n"
@@ -209,6 +211,7 @@ static const char app_usage[] =
 		"config file when not provided)\n"
 	"\t-s SCRIPT_FILE: No CLI script file is run when not specified\n"
 	"\t-l LOG_LEVEL: 0 = NONE, 1 = HIGH PRIO (default), 2 = LOW PRIO\n"
+	"\t--version application version\n"
 	"\t--disable-hw-csum Disable TCP/UDP HW checksum\n"
 	"\t--preproc PREPROCESSOR: Configuration file pre-processor\n"
 	"\t--preproc-args ARGS: Arguments to be passed to pre-processor\n"
@@ -240,6 +243,11 @@ do {									\
 	APP_CHECK((result >= 0),					\
 		"Parse error in section \"%s\"", section_name);		\
 } while (0)
+
+uint32_t is_rest_support(void)
+{
+	return rest_support;
+}
 
 int
 parser_read_arg_bool(const char *p)
@@ -3282,7 +3290,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 {
 	const char *optname;
 	int opt, option_index;
-	int f_present, s_present, p_present, l_present;
+	int f_present, s_present, p_present, l_present, v_present;
 	int preproc_present, preproc_params_present, disable_csum_present;
 	int hwlb_present;
 	int flow_dir_present;
@@ -3294,6 +3302,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 		{ "preproc-args", 1, 0, 0 },
 		{ "hwlb", 1, 0, 0 },
 		{ "flow_dir", 0, 0, 0 },
+		{ "version", 0, 0, 0 },
 		{ NULL,  0, 0, 0 }
 	};
 
@@ -3303,6 +3312,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	f_present = 0;
 	s_present = 0;
 	p_present = 0;
+	v_present = 0;
 	l_present = 0;
 	disable_csum_present = 0;
 	preproc_present = 0;
@@ -3312,7 +3322,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 	flow_dir_present = 0;
 
 
-	while ((opt = getopt_long(argc, argv, "f:s:p:l:", lgopts,
+	while ((opt = getopt_long(argc, argv, "f:v:s:p:l:", lgopts,
 			&option_index)) != EOF)
 		switch (opt) {
 		case 'f'://配置文件
@@ -3321,12 +3331,16 @@ app_config_args(struct app_params *app, int argc, char **argv)
 					"more than once\n");
 			f_present = 1;
 
+			/* REST API not needed as user has supplied the config file */
+			rest_support = 0;
+
 			if (!strlen(optarg))
 				rte_panic("Error: Config file name is null\n");
 
 			app->config_file = strdup(optarg);
 			if (app->config_file == NULL)
 				rte_panic("Error: Memory allocation failure\n");
+
 
 			break;
 
@@ -3380,6 +3394,15 @@ app_config_args(struct app_params *app, int argc, char **argv)
 
 		case 0:
 			optname = lgopts[option_index].name;
+
+			if (strcmp(optname, "version") == 0) {
+			  if (v_present)
+				  rte_panic("Error: VERSION is provided "
+					  "more than once\n");
+			   v_present = 1;
+			   printf("Version: %s\n", VERSION_STR);
+			   exit(0);
+			}
 
 			//硬件loadbalance
 			if (strcmp(optname, "hwlb") == 0) {

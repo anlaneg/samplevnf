@@ -70,6 +70,14 @@ struct cmd_arp_add_result {
 
 };
 
+uint16_t str2flowtype(const char *string);
+int parse_flexbytes(const char *q_arg, uint8_t *flexbytes,
+	 uint16_t max_num);
+enum rte_eth_input_set_field str2inset(const char *string);
+int app_pipeline_arpicmp_entry_dbg(struct app_params *app,
+			uint32_t pipeline_id, uint8_t *msg);
+
+
 static void
 cmd_arp_add_parsed(void *parsed_result,
 			 __rte_unused struct cmdline *cl, __rte_unused void *data)
@@ -160,6 +168,11 @@ cmd_arp_del_parsed(void *parsed_result,
 		arp_key.filler2 = 0;
 		arp_key.filler3 = 0;
 		struct arp_entry_data *new_arp_data = retrieve_arp_entry(arp_key, STATIC_ARP);
+		if(new_arp_data == NULL) {
+			/* KW Fix */
+			printf("Retrieve arp returned NULL\n");
+			return;
+		}
 		remove_arp_entry(new_arp_data, &arp_key);
 	} else {
 		struct nd_key_ipv6 nd_key;
@@ -169,6 +182,11 @@ cmd_arp_del_parsed(void *parsed_result,
 		nd_key.filler2 = 0;
 		nd_key.filler3 = 0;
 		struct nd_entry_data *new_nd_data = retrieve_nd_entry(nd_key, STATIC_ND);
+		if(new_nd_data == NULL) {
+			/* KW Fix */
+			printf("Retrieve ND returned NULL\n");
+			return;
+		}
 		remove_nd_entry_ipv6(new_nd_data, &nd_key);
 	}
 }
@@ -952,8 +970,7 @@ cmdline_parse_inst_t cmd_set_fwd_mode = {
 
 #if 1
 
-static uint16_t
-str2flowtype(char *string)
+uint16_t str2flowtype(const char *string)
 {
 	uint8_t i = 0;
 	static const struct {
@@ -983,7 +1000,7 @@ str2flowtype(char *string)
 	return RTE_ETH_FLOW_UNKNOWN;
 }
 
-static inline int
+int
 parse_flexbytes(const char *q_arg, uint8_t *flexbytes, uint16_t max_num)
 {
 	char s[256];
@@ -1442,8 +1459,8 @@ struct cmd_set_hash_input_set_result {
 	cmdline_fixed_string_t select;
 };
 
-static enum rte_eth_input_set_field
-str2inset(char *string)
+enum rte_eth_input_set_field
+str2inset(const char *string)
 {
 	uint16_t i;
 
@@ -1966,7 +1983,7 @@ cmdline_parse_inst_t cmd_set_sym_hash_ena_per_port = {
 };
 #endif
 
-static int
+int
 app_pipeline_arpicmp_entry_dbg(struct app_params *app,
 					uint32_t pipeline_id, uint8_t *msg)
 {

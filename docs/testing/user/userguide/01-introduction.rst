@@ -20,16 +20,15 @@ The project's goal is to provides a placeholder for various sample VNF
 reference architecture and optimization methods related to VNF/Network service
 for high performance VNFs. This project provides benefits to other OPNFV
 projects like Functest, Models, yardstick etc to perform real life
-use-case based testing and VNF/NFVi characterization for the same.
+use-case based testing and VNF/ Network Function Virtualization Infrastructure
+(:term:`NFVI`) characterization for the same.
 
 The Project's scope to create a repository of sample VNFs to help VNF
-benchmarking and NFVi characterization with real world traffic and host a
+benchmarking and NFVI characterization with real world traffic and host a
 common development environment for developing the VNF using optimized libraries.
-Also, Develop a test framework in yardstick  to enable
-Virtual Network Function (:term:`VNF`) / Network Function Virtualization Infrastructure
-(:term:`NFVI`) verification.
+Also, develop a test framework in yardstick  to enable VNF/NFVI verification.
 
-*SampleVNF* is used in OPNFV for characterization of NFVi/VNF on OPNFV infrastructure
+*SampleVNF* is used in OPNFV for characterization of NFVI/VNF on OPNFV infrastructure
 and some of the OPNFV features.
 
 .. seealso:: Pharos_ for information on OPNFV community labs and this
@@ -52,7 +51,13 @@ This document consists of the following chapters:
 
 * Chapter :doc:`04-installation` provides instructions to install *SampleVNF*.
 
-* Chapter :doc:`05-BKMs` provides example on how installing and running *SampleVNF*.
+* Chapter :doc:`05-How_to_run_SampleVNFs` provides example on how installing and running *SampleVNF*.
+
+* Chapter :doc:`06-How_to_use_REST_api` provides info on how to run REST API *SampleVNF*.
+
+* Chapter :doc:`07-Config_files` provides info *SampleVNF* configuration.
+
+* Chapter :doc:`08-CLI_Commands_Reference` provides info on CLI commands supported by *SampleVNF*
 
 Contact SampleVNF
 =================

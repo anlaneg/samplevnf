@@ -83,17 +83,17 @@ performance of the solution should be sufficient for testing the UDP NAT perform
 #include <rte_errno.h>
 #include <rte_cfgfile.h>
 
-#include "parse_obj_list.h"
-
 #include <lib_arp.h>
 #include "l2_proto.h"
 #include "interface.h"
+#include "version.h"
 #include "l3fwd_common.h"
 #include "l3fwd_lpm4.h"
 #include "l3fwd_lpm6.h"
 #include "lib_icmpv6.h"
 #include "app.h"
 #include "vnf_common.h"
+#include "gateway.h"
 #define IN6ADDRSZ 16
 #define INADDRSZ 4
 #define APP_LOOKUP_EXACT_MATCH          0
@@ -200,6 +200,7 @@ cmdline_parse_ctx_t main_ctx[];
 uint32_t timer_lcore;
 uint32_t exit_loop = 1;
 port_config_t *port_config;
+
 #define MEMPOOL_SIZE	32 * 1024
 #define BUFFER_SIZE		2048
 #define CACHE_SIZE		256
@@ -436,160 +437,6 @@ app_link_down_internal(__rte_unused struct app_params *app, struct app_link_para
 	cp->state = 0;
 }
 
-/* int
- * inet_pton_ipv4(src, dst)
- *      like inet_aton() but without all the hexadecimal and shorthand.
- * return:
- *      1 if `src' is a valid dotted quad, else 0.
- * notice:
- *      does not touch `dst' unless it's returning 1.
- * author:
- *      Paul Vixie, 1996.
- */
-static int inet_pton_ipv4(const char *src, unsigned char *dst)
-{
-	static const char digits[] = "0123456789";
-	int saw_digit, octets, ch;
-	unsigned char tmp[INADDRSZ], *tp;
-	saw_digit = 0;
-	octets = 0;
-	*(tp = tmp) = 0;
-	while ((ch = *src++) != '\0') {
-		const char *pch;
-		if ((pch = strchr(digits, ch)) != NULL) {
-			unsigned int new = *tp * 10 + (pch - digits);
-			if (new > 255)
-				return 0;
-			if (!saw_digit) {
-				if (++octets > 4)
-					return 0;
-				saw_digit = 1;
-			}
-			*tp = (unsigned char)new;
-		} else if (ch == '.' && saw_digit) {
-			if (octets == 4)
-				return 0;
-			*++tp = 0;
-			saw_digit = 0;
-		} else
-			return 0;
-	}
-	if (octets < 4)
-		return 0;
-	memcpy(dst, tmp, INADDRSZ);
-	return 1;
-}
-
-/* int
- * inet_pton_ipv6(src, dst)
- *      convert presentation level address to network order binary form.
- * return:
- *      1 if `src' is a valid [RFC1884 2.2] address, else 0.
- * notice:
- *      (1) does not touch `dst' unless it's returning 1.
- *      (2) :: in a full address is silently ignored.
- * credit:
- *      inspired by Mark Andrews.
- * author:
- *      Paul Vixie, 1996.
- */
-static int inet_pton_ipv6(const char *src, unsigned char *dst)
-{
-	static const char xdigits_l[] = "0123456789abcdef",
-	    xdigits_u[] = "0123456789ABCDEF";
-	unsigned char tmp[IN6ADDRSZ], *tp = 0, *endp = 0, *colonp = 0;
-	const char *xdigits = 0, *curtok = 0;
-	int ch = 0, saw_xdigit = 0, count_xdigit = 0;
-	unsigned int val = 0;
-	unsigned dbloct_count = 0;
-	memset((tp = tmp), '\0', IN6ADDRSZ);
-	endp = tp + IN6ADDRSZ;
-	colonp = NULL;
-	if (*src == ':')
-		if (*++src != ':')
-			return 0;
-	curtok = src;
-	saw_xdigit = count_xdigit = 0;
-	val = 0;
-	while ((ch = *src++) != '\0') {
-		const char *pch;
-		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
-			pch = strchr((xdigits = xdigits_u), ch);
-		if (pch != NULL) {
-			if (count_xdigit >= 4)
-				return 0;
-			val <<= 4;
-			val |= (pch - xdigits);
-			if (val > 0xffff)
-				return 0;
-			saw_xdigit = 1;
-			count_xdigit++;
-			continue;
-		}
-		if (ch == ':') {
-			curtok = src;
-			if (!saw_xdigit) {
-				if (colonp)
-					return 0;
-				colonp = tp;
-				continue;
-			} else if (*src == '\0') {
-				return 0;
-			}
-			if (tp + sizeof(int16_t) > endp)
-				return 0;
-			*tp++ = (unsigned char)((val >> 8) & 0xff);
-			*tp++ = (unsigned char)(val & 0xff);
-			saw_xdigit = 0;
-			count_xdigit = 0;
-			val = 0;
-			dbloct_count++;
-			continue;
-		}
-		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
-		    inet_pton_ipv4(curtok, tp) > 0) {
-			tp += INADDRSZ;
-			saw_xdigit = 0;
-			dbloct_count += 2;
-			break;	/* '\0' was seen by inet_pton4(). */
-		}
-		return 0;
-	}
-	if (saw_xdigit) {
-		if (tp + sizeof(int16_t) > endp)
-			return 0;
-		*tp++ = (unsigned char)((val >> 8) & 0xff);
-		*tp++ = (unsigned char)(val & 0xff);
-		dbloct_count++;
-	}
-	if (colonp != NULL) {
-		if (dbloct_count == 8)
-			return 0;
-		const int n = tp - colonp;
-		int i;
-		for (i = 1; i <= n; i++) {
-			endp[-i] = colonp[n - i];
-			colonp[n - i] = 0;
-		}
-		tp = endp;
-	}
-	if (tp != endp)
-		return 0;
-	memcpy(dst, tmp, IN6ADDRSZ);
-	return 1;
-}
-static int my_inet_pton_ipv6(int af, const char *src, void *dst)
-{
-	switch (af) {
-	case AF_INET:
-		return inet_pton_ipv4(src, dst);
-	case AF_INET6:
-		return inet_pton_ipv6(src, dst);
-	default:
-		errno = EAFNOSUPPORT;
-		return -1;
-	}
-}
 void convert_ipstr_to_numeric(void)
 {
 	uint32_t i;
@@ -2145,6 +1992,7 @@ main_loop(__attribute__((unused)) void *dummy)
 #endif /* ENABLE_MULTI_BUFFER_OPTIMIZE */
 		}
 	}
+	return 0;
 }
 
 /* display usage */
@@ -2272,6 +2120,7 @@ print_usage(const char *prgname)
 		"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
 		"  -P : enable promiscuous mode\n"
+		"  --version: display app version\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
 		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: optional, ethernet destination for port X\n"
 		"  --no-numa: optional, disable numa awareness\n"
@@ -2445,6 +2294,7 @@ parse_eth_dest(const char *optarg)
 #define CMD_LINE_OPT_NO_HW_CSUM "no-hw-csum"
 #define CMD_LINE_OPT_IPV6 "ipv6"
 #define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
+#define CMD_LINE_OPT_VERSION "version"
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 
 /* Parse the argument given in the command line of the application */
@@ -2453,7 +2303,7 @@ parse_args(int argc, char **argv)
 {
 	int opt, ret;
 	char **argvopt;
-	int option_index;
+	int option_index, v_present = 0;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 		{CMD_LINE_OPT_CONFIG, 1, 0, 0},
@@ -2462,6 +2312,7 @@ parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_NO_HW_CSUM, 0, 0, 0},
 		{CMD_LINE_OPT_IPV6, 0, 0, 0},
 		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
+		{CMD_LINE_OPT_VERSION, 0, 0, 0},
 		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
@@ -2528,6 +2379,15 @@ parse_args(int argc, char **argv)
 				ipv6 = 1;
 			}
 #endif
+
+			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_VERSION,
+				sizeof (CMD_LINE_OPT_VERSION))) {
+			  if (v_present)
+				  rte_panic("Error: VERSION is provided more than once\n");
+			  v_present = 1;
+			  printf("Version: %s\n", VERSION_STR);
+			  exit(0);
+      }
 
 			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
 				sizeof (CMD_LINE_OPT_ENABLE_JUMBO))) {
@@ -2896,6 +2756,7 @@ main(int argc, char **argv)
 	uint32_t size;
 	struct pipeline_params *params;
 
+	/* parse application arguments (after the EAL ones) */
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
@@ -2903,7 +2764,7 @@ main(int argc, char **argv)
 	argc -= ret;
 	argv += ret;
 	timer_lcore = rte_lcore_id();
-	/* parse application arguments (after the EAL ones) */
+
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid UDP_Replay parameters\n");
@@ -2921,6 +2782,7 @@ main(int argc, char **argv)
 	ifm_init();
 	nb_ports = rte_eth_dev_count();
 	num_ports = nb_ports;
+	gw_init(num_ports);
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;
 

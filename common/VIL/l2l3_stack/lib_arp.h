@@ -32,19 +32,8 @@
 #define NUM_DESC                (get_arp_buf())
 #define ARP_BUF_DEFAULT                30000
 #define PROBE_TIME             50
+#define ARP_RETRY_COUNT 100
 #undef L3_STACK_SUPPORT
-
-/**
-* A structure for Route table entries of IPv4
-*/
-
-struct lib_arp_route_table_entry {
-	uint32_t ip;	/**< Ipv4 address*/　//本端ip
-	uint32_t mask;	/**< mask */　//本端掩码
-	uint32_t port;	/**< Physical port */ //出接口
-	uint32_t nh;	/**< next hop */ //下一跳ip
-	uint32_t nh_mask;//网段掩码
-};
 
 #define MAX_LOCAL_MAC_ADDRESS	       32
 #define MAX_PORTS                      32
@@ -60,28 +49,35 @@ struct nd_cache {
         uint32_t num_nhip;
 };
 
-/**
-* A structure for Route table entires of IPv6
-*
-*/
-struct lib_nd_route_table_entry {
-	uint8_t ipv6[16];	/**< Ipv6 address */
-	uint8_t depth;		/**< Depth */
-	uint32_t port;		/**< Port */
-	uint8_t nhipv6[16];	/**< next hop Ipv6 */
-};
-
 uint8_t arp_cache_dest_mac_present(uint32_t out_port);
 uint8_t nd_cache_dest_mac_present(uint32_t out_port);
-extern struct lib_nd_route_table_entry lib_nd_route_table[MAX_ND_RT_ENTRY];
-extern struct lib_arp_route_table_entry lib_arp_route_table[MAX_ARP_RT_ENTRY];
-extern struct ether_addr *get_local_link_hw_addr(uint8_t out_port, uint32_t nhip);
+extern struct ether_addr *get_local_cache_hw_addr(uint8_t out_port, uint32_t nhip);
 extern struct ether_addr *get_nd_local_link_hw_addr(uint8_t out_port, uint8_t nhip[]);
 extern struct arp_cache arp_local_cache[MAX_PORTS];
 extern void prefetch(void);
 extern void update_nhip_access(uint8_t);
 uint32_t get_arp_buf(void);
 uint32_t get_nd_buf(void);
+extern int my_inet_pton_ipv6(int af, const char *src, void *dst);
+extern struct rte_hash *arp_hash_handle;
+extern struct rte_hash *nd_hash_handle;
+extern uint32_t lib_arp_get_mac_req;
+extern uint32_t lib_arp_nh_found;
+extern uint32_t lib_arp_no_nh_found;
+extern uint32_t lib_arp_arp_entry_found;
+extern uint32_t lib_arp_no_arp_entry_found;
+extern uint32_t lib_arp_populate_called;
+extern uint32_t lib_arp_delete_called;
+extern uint32_t lib_arp_duplicate_found;
+extern uint32_t arp_route_tbl_index;
+extern uint32_t lib_nd_get_mac_req;
+extern uint32_t lib_nd_nh_found;
+extern uint32_t lib_nd_no_nh_found;
+extern uint32_t lib_nd_nd_entry_found;
+extern uint32_t lib_nd_no_arp_entry_found;
+extern uint32_t lib_nd_populate_called;
+extern uint32_t lib_nd_delete_called;
+extern uint32_t lib_nd_duplicate_found;
 
 enum {
 	ARP_FOUND,
@@ -236,13 +232,7 @@ struct table_nd_entry_data {
 } __attribute__ ((packed));
 
 struct arp_data {
-	struct lib_arp_route_table_entry
-            lib_arp_route_table[MAX_ARP_RT_ENTRY];
-	uint8_t lib_arp_route_ent_cnt;//lib_arp_route_table表的已用表项数目
-	struct lib_nd_route_table_entry
-            lib_nd_route_table[MAX_ARP_RT_ENTRY];
-	uint8_t lib_nd_route_ent_cnt;
-	struct arp_cache arp_local_cache[MAX_PORTS];//按出接口划分的arp信息缓存表
+	struct arp_cache arp_local_cache[MAX_PORTS];
 	struct nd_cache nd_local_cache[MAX_PORTS];
 	struct ether_addr link_hw_addr[MAX_LOCAL_MAC_ADDRESS];//本机各port对应的mac地址
 	uint32_t link_hw_addr_array_idx;//本机各port对应mac地址表大小
@@ -265,7 +255,7 @@ struct arp_data {
 * 0 if failure, and 1 if success
 */
 struct arp_entry_data *get_dest_mac_addr_port(const uint32_t ipaddr,
-				 uint32_t *phy_port, struct ether_addr *hw_addr);
+				 uint32_t phy_port, struct ether_addr *hw_addr);
 
 /**
 * To get the destination mac address for IPV6 address
@@ -280,10 +270,6 @@ struct arp_entry_data *get_dest_mac_addr_port(const uint32_t ipaddr,
 * @return
 * 0 if failure, 1 ifsuccess
 */
-
-struct nd_entry_data *get_dest_mac_address_ipv6_port(uint8_t ipv6addr[], uint32_t *phy_port,
-					 struct ether_addr *hw_addr,
-					 uint8_t nhipv6[]);
 int arp_queue_unresolved_packet(struct arp_entry_data * arp_data,
                         struct rte_mbuf * m);
 extern void arp_send_buffered_pkts(struct arp_entry_data *ret_arp_data,struct ether_addr *hw_addr, uint8_t port_id);
@@ -532,4 +518,10 @@ uint32_t get_nh(uint32_t, uint32_t *, struct ether_addr *addr);
 * next hop ipv6
 */
 void get_nh_ipv6(uint8_t ipv6[], uint32_t *port, uint8_t nhipv6[], struct ether_addr *hw_addr);
+
+struct arp_entry_data *get_dest_mac_addr_ipv4(const uint32_t nhip,
+                   uint32_t phy_port, struct ether_addr *hw_addr);
+struct nd_entry_data *get_dest_mac_addr_ipv6(uint8_t nhipv6[],
+                   uint32_t phy_port, struct ether_addr *hw_addr);
+
 #endif

@@ -78,8 +78,12 @@ endif
 endif
 endif
 
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+LDLIBS += -lrte_pmd_ring -lrte_pmd_null -lrte_pmd_ixgbe -lrte_pmd_i40e  -lrte_pmd_e1000  -lrte_pmd_virtio -lrte_pmd_vmxnet3_uio
+endif
+
 LD_TINFO = $(shell pkg-config --silence-errors --libs-only-l tinfo)
-LDFLAGS += -lpcap $(LD_TINFO) $(LD_LUA)
+LDFLAGS += -lm -lpcap $(LD_TINFO) $(LD_LUA)
 LDFLAGS += -lncurses -lncursesw -ledit
 
 PROX_STATS ?= y
@@ -103,6 +107,11 @@ ifeq ($(log),)
 CFLAGS += -DPROX_MAX_LOG_LVL=2
 else
 CFLAGS += -DPROX_MAX_LOG_LVL=$(log)
+endif
+
+# When ipv4 packet is de-encalpusled from ipv6 packet, genaerate IP checksum.
+ifeq ($(GEN_DECAP_IPV6_TO_IPV4_CKSUM),y)
+CFLAGS += -DGEN_DECAP_IPV6_TO_IPV4_CKSUM
 endif
 
 # override any use-case/enviroment specific choices regarding crc and
@@ -157,10 +166,20 @@ SRCS-y += handle_swap.c
 SRCS-y += handle_police.c
 SRCS-y += handle_acl.c
 SRCS-y += handle_gen.c
+SRCS-y += handle_master.c
+SRCS-y += packet_utils.c
 SRCS-y += handle_mirror.c
 SRCS-y += handle_genl4.c
 SRCS-y += handle_ipv6_tunnel.c
 SRCS-y += handle_read.c
+ifeq ($(call rte_ver_LT,17,8,0,0),y)
+ifeq ($(call rte_ver_GE,17,2,0,16),y)
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += handle_esp.c
+ifneq ($(CONFIG_RTE_LIBRTE_PMD_AESNI_MB),y)
+$(warning "Building w/o IPSEC support")
+endif
+endif
+endif
 SRCS-y += handle_cgnat.c
 SRCS-y += handle_nat.c
 SRCS-y += handle_dump.c

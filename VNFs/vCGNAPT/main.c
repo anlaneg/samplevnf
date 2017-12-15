@@ -15,12 +15,14 @@
 */
 
 #include "app.h"
+#include "pipeline_cgnapt.h"
 
 static struct app_params app;
 
 int
 main(int argc, char **argv)
 {
+	struct mg_context *ctx = NULL;
 	//log初始化
 	rte_openlog_stream(stderr);
 
@@ -30,6 +32,12 @@ main(int argc, char **argv)
 
 	//命令行解析
 	app_config_args(&app, argc, argv);
+
+	/* initialize the rest api */
+	if (is_rest_support()) {
+		set_vnf_type("VCGNAPT");
+		ctx = rest_api_init(&app);
+	}
 
 	//如果需要预处理，则采用app->preproc对配置文件进行预处理，生成app->parser_file
 	app_config_preproc(&app);
@@ -45,12 +53,22 @@ main(int argc, char **argv)
 	/* Init */
 	app_init(&app);
 
+	if (is_rest_support() && (ctx != NULL)) {
+		/* rest api's for cgnapt */
+		rest_api_cgnapt_init(ctx, &app);
+	}
+
 	/* Run-time */
 	//各core均执行app_thread,包括master core
 	rte_eal_mp_remote_launch(
 		app_thread,
 		(void *) &app,
 		CALL_MASTER);
+
+	if (is_rest_support() && (ctx != NULL)) {
+		mg_stop(ctx);
+		printf("Civet server stopped.\n");
+	}
 
 	return 0;
 }

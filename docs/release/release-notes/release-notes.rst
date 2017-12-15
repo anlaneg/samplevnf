@@ -12,17 +12,18 @@ are licensed under a Creative Commons Attribution 4.0 International License.
 You should have received a copy of the license along with this.
 If not, see <http://creativecommons.org/licenses/by/4.0/>.
 :
-The *SampleVNFs*, the *SampleVNF test cases* are opensource software,
- licensed under the terms of the Apache License, Version 2.0.
 
-===========================================
+The *SampleVNFs*, the *SampleVNF test cases* are opensource software,
+licensed under the terms of the Apache License, Version 2.0.
+
+==========================================
 OPNFV Euphrates Release Note for SampleVNF
-===========================================
+==========================================
 
 .. toctree::
    :maxdepth: 2
 
-.. _SampleVNF: https://wiki.opnfv.org/samplevnf
+.. _SampleVNF: https://wiki.opnfv.org/SAM
 
 .. _Yardstick: https://wiki.opnfv.org/yardstick
 
@@ -42,8 +43,7 @@ Version History
 | *Date*         | *Version*          | *Comment*                       |
 |                |                    |                                 |
 +----------------+--------------------+---------------------------------+
-+----------------+--------------------+---------------------------------+
-|                |  1.0               | SampleVNF for Euphrates release    |
+| "Oct 20 2017"  |  5.1               | SampleVNF for Euphrates release |
 |                |                    |                                 |
 +----------------+--------------------+---------------------------------+
 
@@ -52,9 +52,8 @@ Important Notes
 ===============
 
 The software delivered in the OPNFV SampleVNF_ Project, comprising the
-*SampleVNF VNFs*, the *SampleVNF test cases* and performance test case
-are part of  OPNFV Yardstick_ Project is a realization of the methodology in
-ETSI-ISG NFV-TST001_.
+*SampleVNF VNFs* and performance test case are part of  OPNFV Yardstick_
+Project is a realization of the methodology in ETSI-ISG NFV-TST001_.
 
 
 OPNFV Euphrates Release
@@ -78,12 +77,32 @@ OPNFV platform, including:
 
 * SampleVNF source code
 
-For Euphrates release, the *SampleVNF * is used for the following
+For Euphrates release, the *SampleVNF* supported:
+
++----------------+---------------------------------------------------------+-------------------+
+| *VNF*          |                 *Name*                                  |    *version*      |
++----------------+---------------------------------------------------------+-------------------+
+| *CGNAPT*       | Carrier Grade Network Address and port Translation .5.0 |     v0.1.0        |
++----------------+---------------------------------------------------------+-------------------+
+| *Prox*         | Packet pROcessing eXecution engine                      |     v0.39.0       |
+|                |  acts as traffic generator, L3FWD, L2FWD, BNG etc       |                   |
++----------------+---------------------------------------------------------+-------------------+
+| *vACL*         | Access Control List                                     |     v0.1.0        |
++----------------+---------------------------------------------------------+-------------------+
+| *vFW*          | Firewall                                                |     v0.1.0        |
++----------------+---------------------------------------------------------+-------------------+
+| *UDP_replay*   | UDP_Replay                                              |     v0.1.0        |
++----------------+---------------------------------------------------------+-------------------+
+
+.. note:: Highlevel Desgin and features supported by each of the VNFs is described in Developer
+          and user guide.
+
+For Euphrates release, the *SampleVNF* is used for the following
 testing:
 
 * OPNFV platform testing - generic test cases to measure the categories:
 
-  * NFVi Characterization:
+  * NFVI Characterization:
 
     * Network
 
@@ -92,9 +111,9 @@ testing:
     * Network - rfc2544, rfc3511, latency, http_test etc
 
 
-The *SampleVNF* is developed in the OPNFV community, by the
-SampleVNF_ team. The *Network Service Benchmarking* Testing tool is a part of
-the Yardstick Project.
+The *SampleVNF* is developed in the OPNFV community, by the SampleVNF_ team.
+The *Network Service Benchmarking* SampleVNF Characterization Testing tool is a part of the
+Yardstick Project.
 
 .. note:: The test case description template used for the SampleVNF in yardstick
   test cases is based on the document ETSI-ISG NFV-TST001_; the results report template
@@ -108,19 +127,19 @@ Release Data
 | **Project**                          | SampleVNF                            |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
-| **Repo/tag**                         |                                      |
+| **Repo/tag**                         | samplevnf/Euphrates.5.1              |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
-| **SampleVNF Docker image tag**       |                                      |
+| **SampleVNF Docker image tag**       | Euphrates.5.1                        |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
 | **Release designation**              | Euphrates                            |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
-| **Release date**                     |                                      |
+| **Release date**                     | "October 20 2017"                    |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
-| **Purpose of the delivery**          |                                      |
+| **Purpose of the delivery**          | OPNFV Euphrates release 5.1          |
 |                                      |                                      |
 +--------------------------------------+--------------------------------------+
 
@@ -131,9 +150,9 @@ Deliverables
 Documents
 ---------
 
- - User Guide:  To be added
+ - User Guide: http://artifacts.opnfv.org/samplevnf/euphrates/5.0.0/docs/testing_user_userguide/index.html
 
- - Developer Guide: To be added
+ - Developer Guide: http://artifacts.opnfv.org/samplevnf/euphrates/5.0.0/docs/testing_developer/index.html
 
 
 Software Deliverables
@@ -165,9 +184,6 @@ This is the first version of the SampleVNF  in OPNFV.
 It includes the following documentation updates:
 
 - SampleVNF User Guide:
-  add "network service benchmarking(NSB)" chapter;
-  add "SampleVNF - NSB Testing -Installation" chapter; add "SampleVNF API" chapter;
-  add "SampleVNF user interface" chapter; Update SampleVNF installation chapter;
 
 - SampleVNF Developer Guide
 
@@ -183,25 +199,30 @@ Feature additions
 
 
 Known Issues/Faults
-------------
-
-
+-------------------
+- Huge page freeing needs to be handled properly while running the application else it might
+  cause system crash. Known issue from DPDK.
+- UDP Replay is used to capture throughput for dynamic cgnapt
+- Hardware Checksum offload is not supported for IPv6 traffic
+- SampleVNF on sriov is tested till 4 threads
+- Rest API is supported only for vACL, vFW, vCGNAPT
+- Rest API uses port 80, make sure other webservices are stopped before using SampleVNF RestAPI.
 
 Corrected Faults
 ----------------
 
-Euphrates.1.0:
+Euphrates.5.1:
 
 +----------------------------+------------------------------------------------+
 | **JIRA REFERENCE**         | **DESCRIPTION**                                |
 |                            |                                                |
 +----------------------------+------------------------------------------------+
-| JIRA: samplevnf-           |                                                |
+|                            |                                                |
 |                            |                                                |
 +----------------------------+------------------------------------------------+
 
 
-Euphrates  known restrictions/issues
+Euphrates known restrictions/issues
 ====================================
 +-----------+-----------+----------------------------------------------+
 | Installer | Scenario  |  Issue                                       |

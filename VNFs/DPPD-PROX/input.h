@@ -31,5 +31,6 @@ int reg_input(struct input *in);
 void unreg_input(struct input *in);
 
 void input_proc_until(uint64_t deadline);
+void input_proc(void);
 
 #endif /* _INPUT_H_ */

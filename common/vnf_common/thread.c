@@ -59,6 +59,8 @@ do {							\
 
 #endif
 
+uint32_t exit_app_thread = 0;
+
 //收取消息
 static inline void *
 thread_msg_recv(struct rte_ring *r)
@@ -227,6 +229,9 @@ app_thread(void *arg)
 	for (i = 0; ; i++) {
 		uint32_t n_regular = RTE_MIN(t->n_regular, RTE_DIM(t->regular));
 		uint32_t n_custom = RTE_MIN(t->n_custom, RTE_DIM(t->custom));
+
+		if (exit_app_thread)
+			break;
 
 		/* Run regular pipelines */
 		//regular类型的run(即用户未指定pipeline的run函数）
