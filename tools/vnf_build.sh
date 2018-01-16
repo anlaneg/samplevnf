@@ -238,7 +238,7 @@ install_dpdk()
 			patch -p1 < $VNF_CORE/patches/dpdk_custom_patch/set-log-level-to-info.patch
 	fi
 
-	make -j16 install T=$RTE_TARGET
+	make EXTRA_CFLAGS="-O0 -g" -j1 install T=$RTE_TARGET
 	if [ $? -ne 0 ] ; then
 		echo "Failed to build dpdk, please check the errors."
 		return
@@ -263,9 +263,9 @@ install_dpdk()
 setup_hugepages()
 {
 	#----
-	Pages=16
+	Pages=1
 	if [[ "$HUGEPGSZ" = "2048kB" ]] ; then
-		Pages=8192
+		Pages=128
 	fi
 	if [ ! "`grep nr_hugepages /etc/sysctl.conf`" ] ; then
 		echo "vm.nr_hugepages=$Pages" | sudo tee /etc/sysctl.conf
@@ -308,7 +308,7 @@ build_vnfs()
 	export RTE_TARGET=x86_64-native-linuxapp-gcc
 	pushd $VNF_CORE
 	make clean
-	make || { echo -e "\nVNF: Make failed\n"; }
+	make EXTRA_CFLAGS="-O0 -g" || { echo -e "\nVNF: Make failed\n"; }
 	popd
 }
 

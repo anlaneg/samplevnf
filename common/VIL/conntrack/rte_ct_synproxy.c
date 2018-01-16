@@ -159,7 +159,7 @@ rte_sp_get_random_seq_number(void)
 }
 
 
-static int8_t rte_ct_ipversion(void *i_hdr)
+int8_t rte_ct_ipversion(void *i_hdr)
 {
 	uint8_t *ihdr = (uint8_t *)i_hdr;
 	int8_t hdr_chk = *ihdr;
