@@ -628,6 +628,7 @@ uint16_t ifm_receive_bulk_pkts(uint8_t port_id, uint16_t qid,
 	return no_of_rcvd_pkt;
 }
 
+//向接口port发送报文（发送的报文数为npkts)
 uint16_t ifm_transmit_bulk_pkts(l2_phy_interface_t *port,
 				struct rte_mbuf **tx_pkts, uint64_t npkts)
 {

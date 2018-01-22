@@ -1793,6 +1793,7 @@ void process_arpicmp_pkt(struct rte_mbuf *pkt, l2_phy_interface_t *port)
 				if (ARPICMP_DEBUG)
 					print_mbuf("TX ARP REPLY PKT",
 							 port->pmdid, pkt, __LINE__);
+				//向外发送此报文（出接口为port)
 				port->transmit_bulk_pkts(port, &pkt, 1);
 				if (ARPICMP_DEBUG)
 					print_mbuf("TX", port->pmdid, pkt,
