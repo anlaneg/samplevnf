@@ -237,6 +237,8 @@ install_dpdk()
 			patch -p1 < $VNF_CORE/patches/dpdk_custom_patch/disable-acl-debug-logs.patch
 			patch -p1 < $VNF_CORE/patches/dpdk_custom_patch/set-log-level-to-info.patch
 	fi
+	echo "Apply dpdk custom patches for cgnat..."
+	patch -p1 < $VNF_CORE/patches/dpdk_custom_patch/nfp-driver-set-inport.patch
 
 	make EXTRA_CFLAGS="-O0 -g" -j1 install T=$RTE_TARGET
 	if [ $? -ne 0 ] ; then
