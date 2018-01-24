@@ -1,0 +1,13 @@
+.agree
+.download
+CivetWeb_V1.9.zip
+VNFs/DPPD-PROX/build/
+VNFs/UDP_Replay/build/
+VNFs/vACL/build/
+VNFs/vCGNAPT/build/
+VNFs/vFW/build/
+acc_swlb_2port_2WT.cfg.out
+civetweb/
+dpdk-17.05.zip
+dpdk/
+
