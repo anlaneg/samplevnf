@@ -195,7 +195,7 @@ struct app_pipeline_params {
 
 	char type[APP_PIPELINE_TYPE_SIZE];//pipeline类型（来源于type配置项）
 
-	//来源于core配置项
+	//来源于core配置项(指定某个pipeline使用哪个s,那个c)
 	uint32_t socket_id;
 	uint32_t core_id;
 	uint32_t hyper_th_id;
@@ -254,8 +254,8 @@ struct app_thread_data {
 
 	uint64_t deadline;
 
-	struct rte_ring *msgq_in;
-	struct rte_ring *msgq_out;
+	struct rte_ring *msgq_in;//消息队列入ring
+	struct rte_ring *msgq_out;//消息队列出ring
 
 	uint64_t headroom_time;
 	uint64_t headroom_cycles;

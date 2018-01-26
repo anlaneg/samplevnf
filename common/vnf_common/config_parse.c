@@ -224,7 +224,7 @@ app_print_usage(char *prgname)
 	rte_exit(0, app_usage, prgname, app_params_default.config_file);
 }
 
-//跳过next前导的空白符
+//跳过pos前导的空白符
 #define skip_white_spaces(pos)			\
 ({						\
 	__typeof__(pos) _p = (pos);		\
@@ -375,6 +375,12 @@ parser_read_uint32(uint32_t *value, const char *p)
 	return 0;
 }
 
+//这个代码写的非常繁杂（实际上这是个字符串的解析，解析如下字符串）
+//\d=[0-9]
+//(\d+|([s|S]\d+)?([c|C]\d+)?h?)
+//思路：先前过空格，检查第一个字符，如果是数字，则按“\d+”进行解析
+//接着就是个简单状态机
+//给定一个串，得出需要分出哪个socket,哪个core，使用那个超线程
 int
 parse_pipeline_core(uint32_t *socket,
 	uint32_t *core,
@@ -386,14 +392,14 @@ parse_pipeline_core(uint32_t *socket,
 
 	uint32_t s = 0, c = 0, h = 0, val;
 	uint8_t s_parsed = 0, c_parsed = 0, h_parsed = 0;
-	const char *next = skip_white_spaces(entry);//跳过空字符
+	const char *next = skip_white_spaces(entry);//跳过前导的空字符
 	char type;
 
 	/* Expect <CORE> or [sX][cY][h]. At least one parameter is required. */
 	while (*next != '\0') {
 		/* If everything parsed nothing should left */
 		if (s_parsed && c_parsed && h_parsed)
-			return -EINVAL;//只容许配置一次
+			return -EINVAL;//s,c,h只容许配置一次
 
 		type = *next;
 		switch (type) {
@@ -419,7 +425,7 @@ parse_pipeline_core(uint32_t *socket,
 			next++;
 			break;
 		default:
-			//对于core的配置，需要在最前面，此时s,c,h均没有出现过(但它只是单独的，否则不生效）
+			//如果没有s,c,h等标志符，则认为采用原始的core的方式进行配置，默认为C前缀出现
 			/* If it start from digit it must be only core id. */
 			if (!isdigit(*next) || s_parsed || c_parsed || h_parsed)
 				return -EINVAL;
@@ -429,19 +435,26 @@ parse_pipeline_core(uint32_t *socket,
 
 		for (num_len = 0; *next != '\0'; next++, num_len++) {
 			if (num_len == RTE_DIM(num))
-				return -EINVAL;
+				return -EINVAL;//内容过长
 
 			if (!isdigit(*next))
-				break;
+				break;//非数字
 
-			num[num_len] = *next;
+			num[num_len] = *next;//填充对应的数字
 		}
 
+		//仅容许h后不跟数字
 		if (num_len == 0 && type != 'h' && type != 'H')
 			return -EINVAL;
 
+		//h后不容许跟数字
 		if (num_len != 0 && (type == 'h' || type == 'H'))
 			return -EINVAL;
+		//上面的两个检查可以简化为
+		//if ( (type =='h' || type =='H')? num_len!= 0 : num_len==0)
+		//  return -EINVAL;
+
+		//转换对应的数字（采用10进制）
 		if(num_len < sizeof(num))
 			num[num_len] = '\0';
 		val = strtol(num, NULL, 10);
@@ -1418,8 +1431,9 @@ parse_pipeline(struct app_params *app,
 	ssize_t param_idx;
 	int n_entries, i;
 
-	//pipeline段有多少配置项
+	//此pipeline段有多少配置项
 	n_entries = rte_cfgfile_section_num_entries(cfg, section_name);
+	//对空的pipeline配置进行报错
 	PARSE_ERROR_SECTION_NO_ENTRIES((n_entries > 0), section_name);
 
 	entries = malloc(n_entries * sizeof(struct rte_cfgfile_entry));
@@ -1428,10 +1442,11 @@ parse_pipeline(struct app_params *app,
 	//取出pipeline段的所有配置项
 	rte_cfgfile_section_entries(cfg, section_name, entries, n_entries);
 
-	//pipeline参数配置容许有多个
+	//pipeline参数配置容许有多个（这里为此段寻找一个pipeline_params空间）
 	param_idx = APP_PARAM_ADD(app->pipeline_params, section_name);
 	PARSER_PARAM_ADD_CHECK(param_idx, app->pipeline_params, section_name);
 
+	//此section_name将占用此param,下面我们进行填充
 	param = &app->pipeline_params[param_idx];
 
 	//遍历pipeline对应的所有配置项
@@ -1499,6 +1514,7 @@ parse_pipeline(struct app_params *app,
 			continue;
 		}
 
+		//定义此pipeline的周期间隔
 		if (strcmp(ent->name, "timer_period") == 0) {
 			int status = parser_read_uint32(
 				&param->timer_period,
@@ -1588,18 +1604,21 @@ parse_pipeline(struct app_params *app,
 
 	param->parsed = 1;
 
+	//创建消息队列（receiver)
 	snprintf(name, sizeof(name), "MSGQ-REQ-%s", section_name);
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
 	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 	param->msgq_in[param->n_msgq_in++] = param_idx;
 
+	//创建消息队列response
 	snprintf(name, sizeof(name), "MSGQ-RSP-%s", section_name);
 	param_idx = APP_PARAM_ADD(app->msgq_params, name);
 	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 	param->msgq_out[param->n_msgq_out++] = param_idx;
 
+	//这个是什么?
 	snprintf(name, sizeof(name), "MSGQ-REQ-CORE-s%" PRIu32 "c%" PRIu32 "%s",
 		param->socket_id,
 		param->core_id,
@@ -1608,6 +1627,7 @@ parse_pipeline(struct app_params *app,
 	PARSER_PARAM_ADD_CHECK(param_idx, app->msgq_params, name);
 	app->msgq_params[param_idx].cpu_socket_id = param->socket_id;
 
+	//这个是什么？
 	snprintf(name, sizeof(name), "MSGQ-RSP-CORE-s%" PRIu32 "c%" PRIu32 "%s",
 		param->socket_id,
 		param->core_id,
@@ -2518,6 +2538,7 @@ struct config_section {
 	config_section_load load;
 };
 
+//各配置段名称及处理函数注册
 static const struct config_section cfg_file_scheme[] = {
 	{"EAL", 0, parse_eal},
 	{"PIPELINE", 1, parse_pipeline},

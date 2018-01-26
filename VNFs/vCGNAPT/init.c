@@ -1733,6 +1733,7 @@ app_init_threads(struct app_params *app)
 				params->core_id,
 				(params->hyper_th_id) ? "h" : "");
 
+		//初始化单个线程的值
 		t = &app->thread_data[lcore_id];
 
 		t->timer_period = (rte_get_tsc_hz() *
@@ -1768,6 +1769,7 @@ app_init_threads(struct app_params *app)
 			&t->regular[t->n_regular] :
 			&t->custom[t->n_custom];
 
+		//初始化pipeline对应的数据
 		p->pipeline_id = p_id;
 		p->be = data->be;
 		p->f_run = ptype->be_ops->f_run;
@@ -1898,6 +1900,7 @@ app_pipeline_type_register(struct app_params *app, struct pipeline_type *ptype)
 	return 0;
 }
 
+//给定pipeline类型查找对应的pipeline
 struct
 pipeline_type *app_pipeline_type_find(struct app_params *app, char *name)
 {

@@ -2194,20 +2194,20 @@ static int arp_parse_args(struct pipeline_params *params)
 			char *token = strtok(arg_value, "RXQ");
 			while (token) {
 				j = 0;
-				//解析port-id
+				//解析port-id,存入phy_port_num
 				while ((j < 4) && (token[j] != '.')) {
 					phy_port_num[j] = token[j];
 					j++;
 				}
 				phy_port_num[j] = '\0';//加入'\0',补充为字符串
 				rxport = atoi(phy_port_num);//将port-id转为数字
-				prv_in_port_a[n_prv_in_port++] = rxport;
+				prv_in_port_a[n_prv_in_port++] = rxport;//定义私有接口
 				if (rxport < 0)
 					rxport = 0;
 				printf
 						("token: %s, phy_port_str: %s, phy_port_num %d\n",
 						 token, phy_port_num, rxport);
-				prv_in_port_a[n_prv_in_port++] = rxport;
+				prv_in_port_a[n_prv_in_port++] = rxport;//存两遍私有接口
 				if(rxport < PIPELINE_MAX_PORT_IN)
 				in_port_dir_a[rxport] = 1;	// set rxport egress
 

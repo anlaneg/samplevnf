@@ -26,7 +26,7 @@
 uint8_t in_port_dir_a[PIPELINE_MAX_PORT_IN];
 uint8_t prv_to_pub_map[PIPELINE_MAX_PORT_IN];
 uint8_t pub_to_prv_map[PIPELINE_MAX_PORT_IN];
-uint8_t prv_in_port_a[PIPELINE_MAX_PORT_IN];
+uint8_t prv_in_port_a[PIPELINE_MAX_PORT_IN];//私有口（物理口，入接口）
 uint8_t prv_que_port_index[PIPELINE_MAX_PORT_IN];
 uint8_t in_port_egress_prv[PIPELINE_MAX_PORT_IN];
 

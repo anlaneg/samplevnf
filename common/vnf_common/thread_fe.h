@@ -17,6 +17,7 @@
 #ifndef THREAD_FE_H_
 #define THREAD_FE_H_
 
+//取消息队列（请求）的ring结构
 static inline struct rte_ring *
 app_thread_msgq_in_get(struct app_params *app,
 		uint32_t socket_id, uint32_t core_id, uint32_t ht_id)
@@ -37,6 +38,7 @@ app_thread_msgq_in_get(struct app_params *app,
 	return app->msgq[param_idx];
 }
 
+//取消息队列（响应）的ring结构
 static inline struct rte_ring *
 app_thread_msgq_out_get(struct app_params *app,
 		uint32_t socket_id, uint32_t core_id, uint32_t ht_id)

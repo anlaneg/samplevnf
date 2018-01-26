@@ -131,7 +131,7 @@ pipeline_txrx_parse_args(struct pipeline_txrx *p,
 		printf("TXRX pipeline_txrx_parse_args params->n_args: %d\n",
 			params->n_args);
 
-	//先分析pipeline_txrx_type参数
+	//分析pipeline_txrx_type参数
 	for (i = 0; i < params->n_args; i++) {
 		char *arg_name = params->args_name[i];
 		char *arg_value = params->args_value[i];
@@ -159,6 +159,7 @@ pipeline_txrx_parse_args(struct pipeline_txrx *p,
 		}
 	}
 
+	//pipeline_txrx_type必须设置
 	if (!txrx_type_present) {
 		printf("TXRX type not specified\n");
 		return -1;
@@ -190,7 +191,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	uint32_t pkt_mask = 1 << pkt_num;
 	/* ARP outport number */
 	//将arp重定向至此port处理
-	uint32_t out_port = p_txrx->p.n_ports_out - 1;
+	uint32_t out_port = p_txrx->p.n_ports_out - 1;//最后一个接口
 
 	//这里直接采用＋12的方式，偏移到eth_proto,完全不考虑vlan等情况
 	uint16_t *eth_proto =
