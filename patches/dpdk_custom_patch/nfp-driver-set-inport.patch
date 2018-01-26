@@ -8,26 +8,3 @@
  		rx_pkts[avail++] = mb;
  
  		/* Now resetting and updating the descriptor */
---- a/lib/librte_ether/rte_ethdev.h	2017-02-15 05:17:45.000000000 +0800
-+++ b/lib/librte_ether/rte_ethdev.h	2018-01-16 17:12:27.193139010 +0800
-@@ -171,6 +171,7 @@
- #endif
- 
- #include <stdint.h>
-+#include <assert.h>
- 
- #include <rte_dev.h>
- 
-@@ -2706,7 +2707,12 @@
- #endif
- 	int16_t nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
- 			rx_pkts, nb_pkts);
--
-+        int16_t idx;
-+        for(idx = 0 ; idx < nb_rx ; ++idx)
-+        {
-+              assert(rx_pkts[idx]->port != 255);
-+        }
-+	
- #ifdef RTE_ETHDEV_RXTX_CALLBACKS
- 	struct rte_eth_rxtx_callback *cb = dev->post_rx_burst_cbs[queue_id];

@@ -145,7 +145,7 @@ uint8_t calculate_lb_thread_prv(struct rte_mbuf *pkt, void *arg)
 	uint16_t *dst_port;
 	uint8_t *protocol;
 	struct lb_pkt *lb_pkt = (struct lb_pkt *)
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 
 	if (rte_be_to_cpu_16(lb_pkt->eth.ether_type) == ETHER_TYPE_IPv6) {
 		src_addr = (uint32_t *)&lb_pkt->ipv6_port.ipv6.src_addr;
@@ -334,7 +334,7 @@ uint8_t calculate_lb_thread_pub(struct rte_mbuf *pkt, void *arg)
 	uint8_t *protocol;
 	struct lb_pkt *lb_pkt = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt,
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt));
 
 	if (rte_be_to_cpu_16(lb_pkt->eth.ether_type) == ETHER_TYPE_IPv6) {
 		src_addr = (uint32_t *)&lb_pkt->ipv6_port.ipv6.src_addr;
@@ -494,7 +494,7 @@ pkt_work_loadb_key_prv(
 
 	struct lb_pkt *lb_pkt = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt,
-				MBUF_HDR_ROOM);
+				FUN_MBUF_HDR_ROOM(pkt));
 	uint32_t *out_port = RTE_MBUF_METADATA_UINT32_PTR(pkt,
 				outport_offset);
 
@@ -536,7 +536,7 @@ pkt_work_loadb_key_pub(
 
 	struct lb_pkt *lb_pkt = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt,
-				MBUF_HDR_ROOM);
+				FUN_MBUF_HDR_ROOM(pkt));
 	uint32_t *out_port = RTE_MBUF_METADATA_UINT32_PTR(pkt,
 				outport_offset);
 
@@ -586,16 +586,16 @@ pkt4_work_loadb_key_prv(
 
 	struct lb_pkt *lb_pkt0 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[0],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[0]));
 	struct lb_pkt *lb_pkt1 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[1],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[1]));
 	struct lb_pkt *lb_pkt2 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[2],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[2]));
 	struct lb_pkt *lb_pkt3 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[3],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[3]));
 
 	#ifdef MY_LOADB_DBG_PRINT
 	if (LOADB_DEBUG == 3)
@@ -666,16 +666,16 @@ pkt4_work_loadb_key_pub(
 
 	struct lb_pkt *lb_pkt0 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[0],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[0]));
 	struct lb_pkt *lb_pkt1 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[1],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[1]));
 	struct lb_pkt *lb_pkt2 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[2],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[2]));
 	struct lb_pkt *lb_pkt3 = (struct lb_pkt *)
 				RTE_MBUF_METADATA_UINT8_PTR(pkt[3],
-					MBUF_HDR_ROOM);
+					FUN_MBUF_HDR_ROOM(pkt[3]));
 
 	#ifdef MY_LOADB_DBG_PRINT
 	if (LOADB_DEBUG == 3)

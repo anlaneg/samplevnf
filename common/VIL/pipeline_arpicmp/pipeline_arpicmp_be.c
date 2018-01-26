@@ -522,10 +522,10 @@ pkt_key_arpicmp(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 	uint8_t in_port_id = pkt->port;
 	uint8_t *protocol;
 	uint32_t pkt_mask = 1 << pkt_num;
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt) + 12;
 
 	uint32_t prot_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
+			FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
 
 	uint16_t *eth_proto =
 		RTE_MBUF_METADATA_UINT16_PTR(pkt, eth_proto_offset);
@@ -582,11 +582,12 @@ pkt4_key_arpicmp(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 	struct pipeline_arpicmp *p_arp = (struct pipeline_arpicmp *)ap->p;
 	p_arp->receivedPktCount += 4;
 
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
 	uint8_t in_port_id = pkt[0]->port;
 
-	uint32_t prot_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
+        //XXX change me
+	//uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt[0]) + 12;
+	//uint32_t prot_offset =
+        //			FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t pkt_mask0 = 1 << pkt_num;
@@ -595,13 +596,13 @@ pkt4_key_arpicmp(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 	uint32_t pkt_mask3 = 1 << (pkt_num + 3);
 
 	uint16_t *eth_proto0 =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt[0], eth_proto_offset);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt[0],FUN_MBUF_HDR_ROOM(pkt[0]) + 12);
 	uint16_t *eth_proto1 =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt[1], eth_proto_offset);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt[1],FUN_MBUF_HDR_ROOM(pkt[1]) + 12);
 	uint16_t *eth_proto2 =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt[2], eth_proto_offset);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt[2],FUN_MBUF_HDR_ROOM(pkt[2]) + 12);
 	uint16_t *eth_proto3 =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt[3], eth_proto_offset);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt[3],FUN_MBUF_HDR_ROOM(pkt[3]) + 12);
 
 	uint8_t *protocol0;
 	uint8_t *protocol1;
@@ -609,8 +610,8 @@ pkt4_key_arpicmp(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 	uint8_t *protocol3;
 
 	#ifdef IPV6
-	uint32_t prot_offset_ipv6 =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST;
+	//uint32_t prot_offset_ipv6 =
+	//		MBUF_HDR_ROOM + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST;
 
 	#endif
 
@@ -618,35 +619,35 @@ pkt4_key_arpicmp(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 /* --0-- */
 	if (rte_be_to_cpu_16(*eth_proto0) == ETHER_TYPE_IPv6)
 		protocol0 =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt[0], prot_offset_ipv6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt[0],FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST);
 	else
-		protocol0 = RTE_MBUF_METADATA_UINT8_PTR(pkt[0], prot_offset);
+		protocol0 = RTE_MBUF_METADATA_UINT8_PTR(pkt[0], FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST);
 
 /* --1-- */
 	if (rte_be_to_cpu_16(*eth_proto1) == ETHER_TYPE_IPv6)
 		protocol1 =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt[1], prot_offset_ipv6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt[1],FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST);
 	else
-		protocol1 = RTE_MBUF_METADATA_UINT8_PTR(pkt[1], prot_offset);
+		protocol1 = RTE_MBUF_METADATA_UINT8_PTR(pkt[1],FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST);
 
 /* --2-- */
 	if (rte_be_to_cpu_16(*eth_proto2) == ETHER_TYPE_IPv6)
 		protocol2 =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt[2], prot_offset_ipv6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt[2], FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST);
 	else
-		protocol2 = RTE_MBUF_METADATA_UINT8_PTR(pkt[2], prot_offset);
+		protocol2 = RTE_MBUF_METADATA_UINT8_PTR(pkt[2], FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST);
 
 /* --3-- */
 	if (rte_be_to_cpu_16(*eth_proto3) == ETHER_TYPE_IPv6)
 		protocol3 =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt[3], prot_offset_ipv6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt[3], FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST);
 	else
-		protocol3 = RTE_MBUF_METADATA_UINT8_PTR(pkt[3], prot_offset);
+		protocol3 = RTE_MBUF_METADATA_UINT8_PTR(pkt[3], FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST);
 	#else
-	protocol0 = RTE_MBUF_METADATA_UINT8_PTR(pkt[0], prot_offset);
-	protocol1 = RTE_MBUF_METADATA_UINT8_PTR(pkt[1], prot_offset);
-	protocol2 = RTE_MBUF_METADATA_UINT8_PTR(pkt[2], prot_offset);
-	protocol3 = RTE_MBUF_METADATA_UINT8_PTR(pkt[3], prot_offset);
+	protocol0 = RTE_MBUF_METADATA_UINT8_PTR(pkt[0], FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST );
+	protocol1 = RTE_MBUF_METADATA_UINT8_PTR(pkt[1], FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST );
+	protocol2 = RTE_MBUF_METADATA_UINT8_PTR(pkt[2], FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST );
+	protocol3 = RTE_MBUF_METADATA_UINT8_PTR(pkt[3], FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST);
 	#endif
 
 	if ((ARPICMP_DEBUG > 2) && (arpicmp_pkt_print_count < 10)) {

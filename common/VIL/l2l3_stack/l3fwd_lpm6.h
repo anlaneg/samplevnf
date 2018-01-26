@@ -50,12 +50,12 @@
 #include "l3fwd_common.h"
 #include "l3fwd_lpm4.h"
 #include "interface.h"
-
+#include "mbuf_hdr_room.h"
 /**
 * Define all RTE MBUF offset size
 */
 
-#define MBUF_HDR_ROOM 256			/**< MBUF HEADER ROOM OFFSET */
+#define FUN_MBUF_HDR_ROOM(pkt) DPDK_17_05_MBUF_HDR_ROOM(pkt)			/**< MBUF HEADER ROOM OFFSET */
 /* IPv6 */
 #define IP_HDR_SIZE_IPV6  40			/**< IPv6 HEADER OFFSET */
 #define IP_HDR_SRC_ADR_OFST_IPV6 8  /**< IPv6 HEADER SRC IP ADDRESS OFFSET */

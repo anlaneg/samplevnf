@@ -183,7 +183,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 		return;
 
 	uint8_t in_port_id = pkt->port;
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt) + 12;
 
 	uint32_t pkt_mask = 1 << pkt_num;
 	/* ARP outport number */
@@ -194,7 +194,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 
 	uint8_t *protocol;
 	uint32_t prot_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
+			FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
 
 	#ifdef IPV6
 	struct ipv6_hdr *ipv6_h;
@@ -226,7 +226,7 @@ pkt_work_txrx(struct rte_mbuf *pkt, uint32_t pkt_num, void *arg)
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t dst_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr = RTE_MBUF_METADATA_UINT32_PTR(pkt, dst_addr_offset);
 
 	if (TXRX_DEBUG > 2)
@@ -293,7 +293,7 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 		return;
 
 	uint16_t in_port_id = (*pkt)->port;
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	//uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
 
 
 	uint32_t pkt_mask0 = 1 << pkt_num;
@@ -305,17 +305,17 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 	uint32_t out_port = p_txrx->p.n_ports_out - 1;
 
 	uint16_t *eth_proto0 =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt[0], eth_proto_offset);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt[0], FUN_MBUF_HDR_ROOM(pkt[0]) + 12);
 	uint16_t *eth_proto1 =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt[1], eth_proto_offset);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt[1], FUN_MBUF_HDR_ROOM(pkt[1]) + 12);
 	uint16_t *eth_proto2 =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt[2], eth_proto_offset);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt[2], FUN_MBUF_HDR_ROOM(pkt[2]) + 12);
 	uint16_t *eth_proto3 =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt[3], eth_proto_offset);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt[3], FUN_MBUF_HDR_ROOM(pkt[3]) + 12);
 
 	uint8_t *protocol0, *protocol1, *protocol2, *protocol3;
 	uint32_t prot_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
+			FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IP_HDR_PROTOCOL_OFST;
 
 	#ifdef IPV6
 	struct ipv6_hdr *ipv6_h0, *ipv6_h1, *ipv6_h2, *ipv6_h3;
@@ -375,7 +375,7 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t dst_addr_offset0 =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr0 =
 			RTE_MBUF_METADATA_UINT32_PTR(pkt[0], dst_addr_offset0);
 
@@ -437,7 +437,7 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t dst_addr_offset1 =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr1 =
 			RTE_MBUF_METADATA_UINT32_PTR(pkt[1], dst_addr_offset1);
 
@@ -498,7 +498,7 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t dst_addr_offset2 =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr2 =
 			RTE_MBUF_METADATA_UINT32_PTR(pkt[2], dst_addr_offset2);
 
@@ -559,7 +559,7 @@ pkt4_work_txrx(struct rte_mbuf **pkt, uint32_t pkt_num, void *arg)
 
 	/* header room + eth hdr size + src_aadr offset in ip header */
 	uint32_t dst_addr_offset3 =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr3 =
 			RTE_MBUF_METADATA_UINT32_PTR(pkt, dst_addr_offset3);
 

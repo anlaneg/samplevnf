@@ -1087,8 +1087,8 @@ arp_send_buffered_pkts(struct arp_entry_data *ret_arp_data,
 	for (i=0;i<(int)ret_arp_data->num_pkts;i++) {
 		pkt = ret_arp_data->buf_pkts[i];
 
-		eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
-		eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+		eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
+		eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 		memcpy(eth_dest, hw_addr, sizeof(struct ether_addr));
 		memcpy(eth_src, get_link_hw_addr(port_id),
@@ -1131,8 +1131,8 @@ nd_send_buffered_pkts(struct nd_entry_data *ret_nd_data,
 	rte_rwlock_write_lock(&ret_nd_data->queue_lock);
 	for (i=0;i<(int)ret_nd_data->num_pkts;i++) {
 		pkt = ret_nd_data->buf_pkts[i];
-		eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
-		eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+		eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
+		eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 		memcpy(eth_dest, hw_addr, sizeof(struct ether_addr));
 		memcpy(eth_src, get_link_hw_addr(port_id),

@@ -248,7 +248,7 @@ lpm6_table_lookup(struct rte_mbuf **pkts_burst,
 	uint64_t lookup_miss_mask = pkts_mask;
 	/*Populate the key offset in META DATA */
 	uint32_t dst_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST_IPV6;
+			ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST_IPV6;
 	uint64_t pkts_key_mask = pkts_mask;
 
 	//for(i = 0; i < RTE_PORT_IN_BURST_SIZE_MAX; i++)
@@ -262,7 +262,7 @@ lpm6_table_lookup(struct rte_mbuf **pkts_burst,
 		uint8_t dst_addr[RTE_LPM_IPV6_ADDR_SIZE];
 		memcpy(dst_addr,
 					 (uint8_t *) RTE_MBUF_METADATA_UINT32_PTR(pkts_burst[pos],
-								dst_addr_offset),
+								pkts_burst[pos]->data_off+dst_addr_offset),
 					 RTE_LPM_IPV6_ADDR_SIZE);
 		lpm6_key =
 				(uint8_t *) RTE_MBUF_METADATA_UINT8_PTR(pkts_burst[pos],
@@ -349,9 +349,9 @@ lpm6_table_lookup(struct rte_mbuf **pkts_burst,
 		}
 
 		uint8_t *eth_dest =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 		uint8_t *eth_src =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 		if (L3FWD_DEBUG) {
 			printf
 				("MAC BEFORE- DST MAC %02x:%02x:%02x:%02x"
@@ -890,9 +890,9 @@ ipv6_forward_deliver(struct rte_mbuf **pkt_burst, uint16_t nb_pkts,
 uint8_t ipv6_hash_load_balance(struct rte_mbuf *mbuf)
 {
 	uint32_t src_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST_IPV6;
+			mbuf->data_off + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST_IPV6;
 	uint32_t dst_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST_IPV6;
+			mbuf->data_off + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST_IPV6;
 	uint8_t src_addr[RTE_LPM_IPV6_ADDR_SIZE];
 	uint8_t dst_addr[RTE_LPM_IPV6_ADDR_SIZE];
 

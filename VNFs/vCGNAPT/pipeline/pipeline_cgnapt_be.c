@@ -53,12 +53,12 @@
 #include <rte_prefetch.h>
 #include <rte_hexdump.h>
 
+#include "vnf_common.h"
 #include "pipeline_cgnapt_be.h"
 #include "pipeline_cgnapt_common.h"
 #include "pipeline_actions_common.h"
 #include "hash_func.h"
 #include "pipeline_arpicmp_be.h"
-#include "vnf_common.h"
 #include "app.h"
 #include "pipeline_common_be.h"
 #include "vnf_common.h"
@@ -487,7 +487,7 @@ void hw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 	case PKT_TYPE_IPV6:
 
 		ip_header = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				MBUF_HDR_ROOM + ETH_HDR_SIZE + temp);
+				FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + temp);
 
 		pkt_type_is_ipv4 = 0;
 		pkt->ol_flags |= PKT_TX_IPV6;
@@ -503,14 +503,14 @@ void hw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 			((unsigned char *)ip_header +
 			 sizeof(struct ipv6_hdr));
 
-		prot_offset = PROT_OFST_IP6 + temp;
+		prot_offset = FUN_PROT_OFST_IP6(pkt) + temp;
 		break;
 	case PKT_TYPE_IPV6to4:
 		temp = 20;
 	case PKT_TYPE_IPV4:
 
 		ip_header = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				MBUF_HDR_ROOM + ETH_HDR_SIZE + temp);
+				FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + temp);
 
 		pkt->ol_flags |= PKT_TX_IPV4;
 		pkt->l3_len =
@@ -528,7 +528,7 @@ void hw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 			(struct ipv4_hdr *)ip_header;
 		ip_hdr->hdr_checksum = 0;
 
-		prot_offset = PROT_OFST_IP4 + temp;
+		prot_offset = FUN_PROT_OFST_IP4(pkt) + temp;
 		break;
 	default:
 		    printf("hw_checksum: pkt version is invalid\n");
@@ -604,7 +604,7 @@ void sw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 	case PKT_TYPE_IPV6:
 
 		ip_header = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				MBUF_HDR_ROOM + ETH_HDR_SIZE + temp);
+				FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + temp);
 
 		pkt_type_is_ipv4 = 0;
 		tcp = (struct tcp_hdr *)
@@ -617,14 +617,14 @@ void sw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 			((unsigned char *)ip_header +
 			 sizeof(struct ipv6_hdr));
 
-		prot_offset = PROT_OFST_IP6 + temp;
+		prot_offset = FUN_PROT_OFST_IP6(pkt) + temp;
 		break;
 	case PKT_TYPE_IPV6to4:
 		temp = 20;
 	case PKT_TYPE_IPV4:
 
 		ip_header = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				MBUF_HDR_ROOM + ETH_HDR_SIZE + temp);
+				FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + temp);
 
 		tcp = (struct tcp_hdr *)
 			((unsigned char *)ip_header +
@@ -636,7 +636,7 @@ void sw_checksum(struct rte_mbuf *pkt, enum PKT_TYPE ver)
 			((unsigned char *)ip_header +
 			 sizeof(struct ipv4_hdr));
 
-		prot_offset = PROT_OFST_IP4 + temp;
+		prot_offset = FUN_PROT_OFST_IP4(pkt) + temp;
 		break;
 	default:
 		     printf("sw_checksum: pkt version is invalid\n");
@@ -731,7 +731,7 @@ static uint8_t check_arp_icmp(
 	uint64_t pkt_mask,
 	struct pipeline_cgnapt *p_nat)
 {
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt) + 12;
 	uint16_t *eth_proto = RTE_MBUF_METADATA_UINT16_PTR(
 				pkt, eth_proto_offset);
 	struct app_link_params *link;
@@ -769,12 +769,12 @@ static uint8_t check_arp_icmp(
 		/* header room + eth hdr size +
 		* src_aadr offset in ip header
 		*/
-		uint32_t dst_addr_offset = MBUF_HDR_ROOM +
+		uint32_t dst_addr_offset = FUN_MBUF_HDR_ROOM(pkt) +
 			ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 		uint32_t *dst_addr =
 			RTE_MBUF_METADATA_UINT32_PTR(pkt,
 			dst_addr_offset);
-		prot_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		prot_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 			IP_HDR_PROTOCOL_OFST;
 		protocol = RTE_MBUF_METADATA_UINT8_PTR(pkt,
 			prot_offset);
@@ -813,12 +813,12 @@ static uint8_t check_arp_icmp(
 		//uint32_t *dst_addr =
 		//	RTE_MBUF_METADATA_UINT32_PTR(pkt,
 		//	dst_addr_offset);
-		uint32_t prot_offset_ipv6 = MBUF_HDR_ROOM +
+		uint32_t prot_offset_ipv6 = FUN_MBUF_HDR_ROOM(pkt) +
 			ETH_HDR_SIZE + IPV6_HDR_PROTOCOL_OFST;
 		struct ipv6_hdr *ipv6_h;
 
-		ipv6_h = (struct ipv6_hdr *) MBUF_HDR_ROOM +
-			ETH_HDR_SIZE;
+		ipv6_h = (struct ipv6_hdr *) (((uint8_t*)pkt->buf_addr) + (pkt->data_off +
+			ETH_HDR_SIZE));
 		protocol = RTE_MBUF_METADATA_UINT8_PTR(pkt,
 			prot_offset_ipv6);
 
@@ -1178,9 +1178,9 @@ static pipeline_msg_req_handler custom_handlers[] = {
 static void
 convert_ipv6_to_ipv4(struct rte_mbuf *pkt, struct ipv6_hdr *in_ipv6_hdr)
 {
-	uint32_t ip_hdr_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE;
+	uint32_t ip_hdr_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE;
 
-	uint8_t *eth_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+	uint8_t *eth_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 	uint8_t *ipv6_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, ip_hdr_offset);
 
 	struct ether_hdr eth_hdr;
@@ -1284,9 +1284,9 @@ convert_ipv6_to_ipv4(struct rte_mbuf *pkt, struct ipv6_hdr *in_ipv6_hdr)
 static void
 convert_ipv4_to_ipv6(struct rte_mbuf *pkt, struct ipv4_hdr *in_ipv4_hdr)
 {
-	uint32_t ip_hdr_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE;
+	uint32_t ip_hdr_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE;
 
-	uint8_t *eth_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+	uint8_t *eth_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 	uint8_t *ipv4_hdr_p = RTE_MBUF_METADATA_UINT8_PTR(pkt, ip_hdr_offset);
 
 	struct ether_hdr eth_hdr;
@@ -1411,7 +1411,7 @@ PIPELINE_CGNAPT_PORT_OUT_BAH(port_out_ah_cgnapt_bulk,
  */
 int rte_get_pkt_ver(struct rte_mbuf *pkt)
 {
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt) + 12;
 	uint16_t *eth_proto =
 		RTE_MBUF_METADATA_UINT16_PTR(pkt, eth_proto_offset);
 
@@ -1558,8 +1558,9 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 
 	enum PKT_TYPE pkt_type = PKT_TYPE_IPV4;
 
-	src_port_offset = SRC_PRT_OFST_IP4_TCP;
-	dst_port_offset = DST_PRT_OFST_IP4_TCP;
+        //XXX need change,bug when pkts[0].data_off != pkts[i].data_off
+	src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkts[0]);
+	dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkts[0]);
 
 	for (i = 0; i < n_pkts; i++) {
 		p_nat->receivedPktCount++;
@@ -1594,9 +1595,9 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 			continue;
 		}
 		if (ver == 4)
-			prot_offset = PROT_OFST_IP4;
+			prot_offset = FUN_PROT_OFST_IP4(pkt);
 		else
-			prot_offset = PROT_OFST_IP6;
+			prot_offset = FUN_PROT_OFST_IP6(pkt);
 		protocol =
 			(uint8_t *) RTE_MBUF_METADATA_UINT32_PTR(pkt,
 					prot_offset);
@@ -1651,22 +1652,22 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 
 			src_addr =
 				RTE_MBUF_METADATA_UINT32_PTR(pkt,
-					SRC_ADR_OFST_IP4);
+					FUN_SRC_ADR_OFST_IP4(pkt));
 			dst_addr =
 				RTE_MBUF_METADATA_UINT32_PTR(pkt,
-					DST_ADR_OFST_IP4);
+					FUN_DST_ADR_OFST_IP4(pkt));
 
 			if ((*protocol == IP_PROTOCOL_TCP)
 				|| (*protocol == IP_PROTOCOL_UDP)) {
 
-				src_port_offset = SRC_PRT_OFST_IP4_TCP;
-				dst_port_offset = DST_PRT_OFST_IP4_TCP;
+				src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+				dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 
 			} else if (*protocol == IP_PROTOCOL_ICMP) {
 				/* Identifier */
-				src_port_offset = IDEN_OFST_IP4_ICMP;
+				src_port_offset = FUN_IDEN_OFST_IP4_ICMP(pkt);
 				/* Sequence number */
-				dst_port_offset = SEQN_OFST_IP4_ICMP;
+				dst_port_offset = FUN_SEQN_OFST_IP4_ICMP(pkt);
 			}
 
 			src_port =
@@ -1679,16 +1680,16 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 
 			src_addr =
 				RTE_MBUF_METADATA_UINT32_PTR(pkt,
-					SRC_ADR_OFST_IP6);
+					FUN_SRC_ADR_OFST_IP6(pkt));
 			dst_addr =
 				RTE_MBUF_METADATA_UINT32_PTR(pkt,
-					DST_ADR_OFST_IP6);
+					FUN_DST_ADR_OFST_IP6(pkt));
 			src_port =
 				RTE_MBUF_METADATA_UINT16_PTR(pkt,
-					SRC_PRT_OFST_IP6);
+					FUN_SRC_PRT_OFST_IP6(pkt));
 			dst_port =
 				RTE_MBUF_METADATA_UINT16_PTR(pkt,
-					DST_PRT_OFST_IP6);
+					FUN_DST_PRT_OFST_IP6(pkt));
 		}
 		/* need to create compacted table of pointers to
 		* pass to bulk lookup
@@ -1889,30 +1890,30 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 
 		if (ver == 6) {
 
-			src_port_offset = SRC_PRT_OFST_IP6t4;
-			dst_port_offset = DST_PRT_OFST_IP6t4;
-			src_addr_offset = SRC_ADR_OFST_IP6t4;
-			dst_addr_offset = DST_ADR_OFST_IP6t4;
-			prot_offset = PROT_OFST_IP6t4;
-			eth_offset = ETH_OFST_IP6t4;
+			src_port_offset = FUN_SRC_PRT_OFST_IP6t4(pkts[pkt_index]);
+			dst_port_offset = FUN_DST_PRT_OFST_IP6t4(pkts[pkt_index]);
+			src_addr_offset = FUN_SRC_ADR_OFST_IP6t4(pkts[pkt_index]);
+			dst_addr_offset = FUN_DST_ADR_OFST_IP6t4(pkts[pkt_index]);
+			prot_offset = FUN_PROT_OFST_IP6t4(pkts[pkt_index]);
+			eth_offset = FUN_ETH_OFST_IP6t4(pkts[pkt_index]);
 
 		} else {
 
 			if ((*protocol == IP_PROTOCOL_TCP)
 				|| (*protocol == IP_PROTOCOL_UDP)) {
-				src_port_offset = SRC_PRT_OFST_IP4_TCP;
-				dst_port_offset = DST_PRT_OFST_IP4_TCP;
+				src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkts[pkt_index]);
+				dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkts[pkt_index]);
 			} else if (*protocol == IP_PROTOCOL_ICMP) {
 				/* Identifier */
-				src_port_offset = IDEN_OFST_IP4_ICMP;
+				src_port_offset = FUN_IDEN_OFST_IP4_ICMP(pkts[pkt_index]);
 				/* Sequence number */
-				dst_port_offset = SEQN_OFST_IP4_ICMP;
+				dst_port_offset = FUN_SEQN_OFST_IP4_ICMP(pkts[pkt_index]);
 			}
 
-			src_addr_offset = SRC_ADR_OFST_IP4;
-			dst_addr_offset = DST_ADR_OFST_IP4;
-			prot_offset = PROT_OFST_IP4;
-			eth_offset = MBUF_HDR_ROOM;
+			src_addr_offset = FUN_SRC_ADR_OFST_IP4(pkts[pkt_index]);
+			dst_addr_offset = FUN_DST_ADR_OFST_IP4(pkts[pkt_index]);
+			prot_offset = FUN_PROT_OFST_IP4(pkts[pkt_index]);
+			eth_offset = FUN_MBUF_HDR_ROOM(pkts[pkt_index]);
 
 		}
 
@@ -2123,8 +2124,8 @@ static int cgnapt_in_port_ah_mix(struct rte_pipeline *rte_p,
 			eth_dest = eth_dest - 20;
 			eth_src = eth_src - 20;
 
-			dst_port_offset = DST_PRT_OFST_IP4t6;
-			dst_addr_offset = DST_ADR_OFST_IP4t6;
+			dst_port_offset = FUN_DST_PRT_OFST_IP4t6(pkts[pkt_index]);
+			dst_addr_offset = FUN_DST_ADR_OFST_IP4t6(pkts[pkt_index]);
 			dst_addr =
 				RTE_MBUF_METADATA_UINT32_PTR(
 					pkts[pkt_index],
@@ -2672,22 +2673,22 @@ pkt4_work_cgnapt_key_ipv4_prv(
 	uint64_t pkt_mask3 = 1LLU << (pkt_num + 3);
 
 	uint8_t protocol0 = RTE_MBUF_METADATA_UINT8(pkt[0],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[0]));
 	uint8_t protocol1 = RTE_MBUF_METADATA_UINT8(pkt[1],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[1]));
 	uint8_t protocol2 = RTE_MBUF_METADATA_UINT8(pkt[2],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[2]));
 	uint8_t protocol3 = RTE_MBUF_METADATA_UINT8(pkt[3],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[3]));
 
 	uint32_t src_addr0 = RTE_MBUF_METADATA_UINT32(pkt[0],
-				SRC_ADR_OFST_IP4);
+				FUN_SRC_ADR_OFST_IP4(pkt[0]));
 	uint32_t src_addr1 = RTE_MBUF_METADATA_UINT32(pkt[1],
-				SRC_ADR_OFST_IP4);
+				FUN_SRC_ADR_OFST_IP4(pkt[1]));
 	uint32_t src_addr2 = RTE_MBUF_METADATA_UINT32(pkt[2],
-				SRC_ADR_OFST_IP4);
+				FUN_SRC_ADR_OFST_IP4(pkt[2]));
 	uint32_t src_addr3 = RTE_MBUF_METADATA_UINT32(pkt[3],
-				SRC_ADR_OFST_IP4);
+				FUN_SRC_ADR_OFST_IP4(pkt[3]));
 
 	uint16_t src_port_offset0;
 	uint16_t src_port_offset1;
@@ -2734,7 +2735,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt[0],
-						IPV4_UDP_OFST);
+						FUN_IPV4_UDP_OFST(pkt[0]));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -2747,7 +2748,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 	}
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset0 = SRC_PRT_OFST_IP4_TCP;
+		src_port_offset0 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[0]);
 		src_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
 				src_port_offset0);
 
@@ -2755,7 +2756,7 @@ pkt4_work_cgnapt_key_ipv4_prv(
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset0 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset0 = FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 src_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
 				src_port_offset0);
@@ -2807,7 +2808,7 @@ PKT1:
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt[1],
-						IPV4_UDP_OFST);
+						FUN_IPV4_UDP_OFST(pkt[1]));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -2820,7 +2821,7 @@ PKT1:
 	}
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset1 = SRC_PRT_OFST_IP4_TCP;
+		src_port_offset1 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[1]);
 		src_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
 				src_port_offset1);
 
@@ -2828,7 +2829,7 @@ PKT1:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset1 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset1 = FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 src_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
 				src_port_offset1);
@@ -2880,7 +2881,7 @@ PKT2:
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt[2],
-						IPV4_UDP_OFST);
+						FUN_IPV4_UDP_OFST(pkt[2]));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -2893,7 +2894,7 @@ PKT2:
 	}
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset2 = SRC_PRT_OFST_IP4_TCP;
+		src_port_offset2 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[2]);
 		src_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
 				src_port_offset2);
 
@@ -2901,7 +2902,7 @@ PKT2:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset2 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset2 = FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 src_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
 				src_port_offset2);
@@ -2952,7 +2953,7 @@ PKT3:
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt[3],
-						IPV4_UDP_OFST);
+						FUN_IPV4_UDP_OFST(pkt[3]));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -2965,7 +2966,7 @@ PKT3:
 	}
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset3 = SRC_PRT_OFST_IP4_TCP;
+		src_port_offset3 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[3]);
 		src_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
 				src_port_offset3);
 
@@ -2973,7 +2974,7 @@ PKT3:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset3 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset3 = FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 src_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
 				src_port_offset3);
@@ -3034,22 +3035,22 @@ pkt4_work_cgnapt_key_ipv4_pub(
 	uint64_t pkt_mask3 = 1LLU << (pkt_num + 3);
 
 	uint8_t protocol0 = RTE_MBUF_METADATA_UINT8(pkt[0],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[0]));
 	uint8_t protocol1 = RTE_MBUF_METADATA_UINT8(pkt[1],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[1]));
 	uint8_t protocol2 = RTE_MBUF_METADATA_UINT8(pkt[2],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[2]));
 	uint8_t protocol3 = RTE_MBUF_METADATA_UINT8(pkt[3],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[3]));
 
 	uint32_t dst_addr0 = RTE_MBUF_METADATA_UINT32(pkt[0],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[0]));
 	uint32_t dst_addr1 = RTE_MBUF_METADATA_UINT32(pkt[1],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[1]));
 	uint32_t dst_addr2 = RTE_MBUF_METADATA_UINT32(pkt[2],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[2]));
 	uint32_t dst_addr3 = RTE_MBUF_METADATA_UINT32(pkt[3],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[3]));
 
 	uint16_t src_port_offset0;
 	uint16_t src_port_offset1;
@@ -3096,8 +3097,8 @@ pkt4_work_cgnapt_key_ipv4_pub(
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset0 = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset0 = DST_PRT_OFST_IP4_TCP;
+		src_port_offset0 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[0]);
+		dst_port_offset0 = FUN_DST_PRT_OFST_IP4_TCP(pkt[0]);
 
 		src_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
 				src_port_offset0);
@@ -3110,10 +3111,10 @@ pkt4_work_cgnapt_key_ipv4_pub(
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		src_port_offset0 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		src_port_offset0 = FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		/*Sequence number */
-		dst_port_offset0 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		dst_port_offset0 = FUN_MBUF_HDR_ROOM(pkt[0]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 6;
 
 		src_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
@@ -3165,8 +3166,8 @@ PKT1:
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset1 = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset1 = DST_PRT_OFST_IP4_TCP;
+		src_port_offset1 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[1]);
+		dst_port_offset1 = FUN_DST_PRT_OFST_IP4_TCP(pkt[1]);
 
 		src_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
 				src_port_offset1);
@@ -3179,10 +3180,10 @@ PKT1:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset1 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset1 = FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 /*Sequence number */
-		 dst_port_offset1 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 dst_port_offset1 = FUN_MBUF_HDR_ROOM(pkt[1]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 6;
 
 		 src_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
@@ -3232,8 +3233,8 @@ PKT2:
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset2 = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset2 = DST_PRT_OFST_IP4_TCP;
+		src_port_offset2 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[2]);
+		dst_port_offset2 = FUN_DST_PRT_OFST_IP4_TCP(pkt[2]);
 
 		src_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
 				src_port_offset2);
@@ -3246,10 +3247,10 @@ PKT2:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset2 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset2 = FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 /*Sequence number */
-		 dst_port_offset2 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 dst_port_offset2 = FUN_MBUF_HDR_ROOM(pkt[2]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 6;
 
 		 src_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
@@ -3300,8 +3301,8 @@ PKT3:
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset3 = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset3 = DST_PRT_OFST_IP4_TCP;
+		src_port_offset3 = FUN_SRC_PRT_OFST_IP4_TCP(pkt[3]);
+		dst_port_offset3 = FUN_DST_PRT_OFST_IP4_TCP(pkt[3]);
 
 		src_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
 				src_port_offset3);
@@ -3314,10 +3315,10 @@ PKT3:
 
 	case IP_PROTOCOL_ICMP:
 		 /* Identifier */
-		 src_port_offset3 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 src_port_offset3 = FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 4;
 		 /*Sequence number */
-		 dst_port_offset3 = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		 dst_port_offset3 = FUN_MBUF_HDR_ROOM(pkt[3]) + ETH_HDR_SIZE +
 					 IP_HDR_SIZE + 6;
 
 		 src_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
@@ -3379,9 +3380,9 @@ pkt_work_cgnapt_key_ipv4_prv(
 
 	/* bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
-	uint32_t src_addr = RTE_MBUF_METADATA_UINT32(pkt, SRC_ADR_OFST_IP4);
+	uint32_t src_addr = RTE_MBUF_METADATA_UINT32(pkt, FUN_SRC_ADR_OFST_IP4(pkt));
 
 	uint16_t src_port_offset;
 
@@ -3412,7 +3413,7 @@ pkt_work_cgnapt_key_ipv4_prv(
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt,
-						IPV4_UDP_OFST);
+						FUN_IPV4_UDP_OFST(pkt));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -3425,7 +3426,7 @@ pkt_work_cgnapt_key_ipv4_prv(
 	}
 	case IP_PROTOCOL_TCP:
 
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
 		src_port = RTE_MBUF_METADATA_UINT16(pkt, src_port_offset);
 
 		key.port = rte_bswap16(src_port);
@@ -3433,7 +3434,7 @@ pkt_work_cgnapt_key_ipv4_prv(
 	break;
 	case IP_PROTOCOL_ICMP:
 		/* Identifier */
-		src_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		src_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 4;
 		src_port = RTE_MBUF_METADATA_UINT16(pkt, src_port_offset);
 
@@ -3489,8 +3490,8 @@ pkt_work_cgnapt_key_ipv4_pub(
 
 	/* bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
-	uint32_t dst_addr = RTE_MBUF_METADATA_UINT32(pkt, DST_ADR_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
+	uint32_t dst_addr = RTE_MBUF_METADATA_UINT32(pkt, FUN_DST_ADR_OFST_IP4(pkt));
 	uint16_t src_port_offset;
 	uint16_t dst_port_offset;
 	uint16_t src_port;
@@ -3511,8 +3512,8 @@ pkt_work_cgnapt_key_ipv4_pub(
 	switch (protocol) {
 	case IP_PROTOCOL_UDP:
 	case IP_PROTOCOL_TCP:
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset = DST_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+		dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 
 		src_port = RTE_MBUF_METADATA_UINT16(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16(pkt, dst_port_offset);
@@ -3521,9 +3522,9 @@ pkt_work_cgnapt_key_ipv4_pub(
 	break;
 	case IP_PROTOCOL_ICMP:
 		/* Identifier */
-		src_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		src_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 4;
-		dst_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		dst_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 6;
 
 		src_port = RTE_MBUF_METADATA_UINT16(pkt, src_port_offset);
@@ -3592,7 +3593,7 @@ pkt_work_cgnapt_ipv4_prv(
 	uint64_t pkt_mask = 1LLU << pkt_num;
 	struct rte_mbuf *pkt = pkts[pkt_num];
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 	uint32_t dest_if = INVALID_DESTIF;	/* Added for Multiport */
 	uint16_t *outport_id =
@@ -3650,9 +3651,9 @@ pkt_work_cgnapt_ipv4_prv(
 	p_nat->entries[pkt_num] = &(entry->head);
 
 	uint32_t *src_addr =
-		RTE_MBUF_METADATA_UINT32_PTR(pkt, SRC_ADR_OFST_IP4);
+		RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_SRC_ADR_OFST_IP4(pkt));
 	uint32_t *dst_addr =
-		RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP4);
+		RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP4(pkt));
 	uint16_t src_port_offset = 0;
 	uint16_t dst_port_offset = 0;
 	uint16_t *src_port;
@@ -3660,8 +3661,8 @@ pkt_work_cgnapt_ipv4_prv(
 
 	switch (protocol) {
 	case IP_PROTOCOL_TCP:
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset = DST_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+		dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 		src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 
@@ -3680,31 +3681,31 @@ pkt_work_cgnapt_ipv4_prv(
 		#endif
 	break;
 	case IP_PROTOCOL_UDP:
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset = DST_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+		dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 		src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 	break;
 	case IP_PROTOCOL_ICMP:
 		/* Identifier */
-		src_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		src_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 4;
 		/*Sequence number */
-		dst_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+		dst_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 					IP_HDR_SIZE + 6;
 		src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 	break;
 	default: /* KW fix: unknown is treated as TCP/UDP */
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset = DST_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+		dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 		src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, src_port_offset);
 		dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 	break;
 	}
 
-	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
-	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
+	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 	if (entry->data.ttl == NAPT_ENTRY_STALE)
 		entry->data.ttl = NAPT_ENTRY_VALID;
@@ -3973,7 +3974,7 @@ pkt_work_cgnapt_ipv4_pub(
 	uint64_t pkt_mask = 1LLU << pkt_num;
 	struct rte_mbuf *pkt = pkts[pkt_num];
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 	uint32_t dest_if = INVALID_DESTIF;	/* Added for Multiport */
 	uint16_t *outport_id =
@@ -4031,20 +4032,20 @@ pkt_work_cgnapt_ipv4_pub(
 	p_nat->entries[pkt_num] = &(entry->head);
 
 	uint32_t *dst_addr =
-		RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP4);
+		RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP4(pkt));
 	uint16_t src_port_offset = 0;
 	uint16_t dst_port_offset = 0;
 
 	if ((protocol == IP_PROTOCOL_TCP) || (protocol == IP_PROTOCOL_UDP)) {
-		src_port_offset = SRC_PRT_OFST_IP4_TCP;
-		dst_port_offset = DST_PRT_OFST_IP4_TCP;
+		src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+		dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 	} else if (protocol == IP_PROTOCOL_ICMP) {
 		/* Identifier */
-		src_port_offset = MBUF_HDR_ROOM +
+		src_port_offset = FUN_MBUF_HDR_ROOM(pkt) +
 					ETH_HDR_SIZE +
 					IP_HDR_SIZE + 4;
 		/*Sequence number */
-		dst_port_offset = MBUF_HDR_ROOM +
+		dst_port_offset = FUN_MBUF_HDR_ROOM(pkt) +
 					ETH_HDR_SIZE +
 					IP_HDR_SIZE + 6;
 	}
@@ -4052,8 +4053,8 @@ pkt_work_cgnapt_ipv4_pub(
 	uint16_t *src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, src_port_offset);
 	uint16_t *dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 
-	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
-	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
+	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 	if (entry->data.ttl == NAPT_ENTRY_STALE)
 		entry->data.ttl = NAPT_ENTRY_VALID;
@@ -4357,7 +4358,7 @@ pkt4_work_cgnapt_ipv4_prv(
 		/*bitmask representing only this packet */
 		uint64_t pkt_mask = 1LLU << pkt_num;
 
-		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 		uint16_t *outport_id =
 			RTE_MBUF_METADATA_UINT16_PTR(pkt, cgnapt_meta_offset);
@@ -4415,9 +4416,9 @@ pkt4_work_cgnapt_ipv4_prv(
 		p_nat->entries[pkt_num] = &(entry->head);
 
 		uint32_t *src_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, SRC_ADR_OFST_IP4);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_SRC_ADR_OFST_IP4(pkt));
 		uint32_t *dst_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP4);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP4(pkt));
 		uint16_t src_port_offset = 0;
 		uint16_t dst_port_offset = 0;
 		uint16_t *src_port;
@@ -4442,8 +4443,8 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		switch (protocol) {
 		case IP_PROTOCOL_TCP:
-			src_port_offset = SRC_PRT_OFST_IP4_TCP;
-			dst_port_offset = DST_PRT_OFST_IP4_TCP;
+			src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+			dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 			src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
 						src_port_offset);
 			dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
@@ -4468,8 +4469,8 @@ pkt4_work_cgnapt_ipv4_prv(
 			#endif
 		break;
 		case IP_PROTOCOL_UDP:
-			src_port_offset = SRC_PRT_OFST_IP4_TCP;
-			dst_port_offset = DST_PRT_OFST_IP4_TCP;
+			src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+			dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 			src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
 					src_port_offset);
 			dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
@@ -4477,10 +4478,10 @@ pkt4_work_cgnapt_ipv4_prv(
 		break;
 		case IP_PROTOCOL_ICMP:
 			/* Identifier */
-			src_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+			src_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 						IP_HDR_SIZE + 4;
 			/*Sequence number */
-			dst_port_offset = MBUF_HDR_ROOM + ETH_HDR_SIZE +
+			dst_port_offset = FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE +
 						IP_HDR_SIZE + 6;
 			src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
 					src_port_offset);
@@ -4488,8 +4489,8 @@ pkt4_work_cgnapt_ipv4_prv(
 					dst_port_offset);
 		break;
 		default: /* KW fix: unknown is treated as TCP/UDP */
-			src_port_offset = SRC_PRT_OFST_IP4_TCP;
-			dst_port_offset = DST_PRT_OFST_IP4_TCP;
+			src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+			dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 			src_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
 					src_port_offset);
 			dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
@@ -4499,9 +4500,9 @@ pkt4_work_cgnapt_ipv4_prv(
 
 
 		uint8_t *eth_dest =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 		uint8_t *eth_src =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 		if (entry->data.ttl == NAPT_ENTRY_STALE)
 			entry->data.ttl = NAPT_ENTRY_VALID;
@@ -4789,7 +4790,7 @@ pkt4_work_cgnapt_ipv4_pub(
 		/*bitmask representing only this packet */
 		uint64_t pkt_mask = 1LLU << pkt_num;
 
-		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 		uint32_t dest_if = INVALID_DESTIF;	/* Added for Multiport */
 		uint16_t *outport_id =
@@ -4848,21 +4849,21 @@ pkt4_work_cgnapt_ipv4_pub(
 		p_nat->entries[pkt_num] = &(entry->head);
 
 		uint32_t *dst_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP4);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP4(pkt));
 		uint16_t src_port_offset = 0;
 		uint16_t dst_port_offset = 0;
 
 		if ((protocol == IP_PROTOCOL_TCP)
 			|| (protocol == IP_PROTOCOL_UDP)) {
-			src_port_offset = SRC_PRT_OFST_IP4_TCP;
-			dst_port_offset = DST_PRT_OFST_IP4_TCP;
+			src_port_offset = FUN_SRC_PRT_OFST_IP4_TCP(pkt);
+			dst_port_offset = FUN_DST_PRT_OFST_IP4_TCP(pkt);
 		} else if (protocol == IP_PROTOCOL_ICMP) {
 			/* Identifier */
-			src_port_offset = MBUF_HDR_ROOM +
+			src_port_offset = FUN_MBUF_HDR_ROOM(pkt) +
 						ETH_HDR_SIZE +
 						IP_HDR_SIZE + 4;
 			/*Sequence number */
-			dst_port_offset = MBUF_HDR_ROOM +
+			dst_port_offset = FUN_MBUF_HDR_ROOM(pkt) +
 						ETH_HDR_SIZE +
 						IP_HDR_SIZE + 6;
 		}
@@ -4873,9 +4874,9 @@ pkt4_work_cgnapt_ipv4_pub(
 			RTE_MBUF_METADATA_UINT16_PTR(pkt, dst_port_offset);
 
 		uint8_t *eth_dest =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 		uint8_t *eth_src =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 		if (entry->data.ttl == NAPT_ENTRY_STALE)
 			entry->data.ttl = NAPT_ENTRY_VALID;
@@ -5159,10 +5160,10 @@ pkt_work_cgnapt_key_ipv6_prv(
 	/* bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP6);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP6(pkt));
 	uint32_t *src_addr = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				SRC_ADR_OFST_IP6);
-	uint16_t src_port = RTE_MBUF_METADATA_UINT16(pkt, SRC_PRT_OFST_IP6);
+				FUN_SRC_ADR_OFST_IP6(pkt));
+	uint16_t src_port = RTE_MBUF_METADATA_UINT16(pkt, FUN_SRC_PRT_OFST_IP6(pkt));
 
 	uint16_t phy_port = pkt->port;
 	struct pipeline_cgnapt_entry_key key;
@@ -5188,7 +5189,7 @@ pkt_work_cgnapt_key_ipv6_prv(
 
 		udp = (struct udp_hdr *)
 			RTE_MBUF_METADATA_UINT8_PTR(pkt,
-						IPV6_UDP_OFST);
+						FUN_IPV6_UDP_OFST(pkt));
 
 		if (rte_bswap16(udp->dst_port) ==
 			PCP_SERVER_PORT) {
@@ -5258,12 +5259,12 @@ pkt_work_cgnapt_key_ipv6_pub(
 	/* bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 	uint32_t *dst_addr = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt));
 	uint16_t dst_port = RTE_MBUF_METADATA_UINT16(pkt,
-				DST_PRT_OFST_IP4_TCP);
+				FUN_DST_PRT_OFST_IP4_TCP(pkt));
 
 	struct pipeline_cgnapt_entry_key key;
 
@@ -5342,31 +5343,31 @@ pkt4_work_cgnapt_key_ipv6_prv(
 	uint64_t pkt_mask3 = 1LLU << (pkt_num + 3);
 
 	uint8_t protocol0 = RTE_MBUF_METADATA_UINT8(pkt[0],
-				PROT_OFST_IP6);
+				FUN_PROT_OFST_IP6(pkt[0]));
 	uint8_t protocol1 = RTE_MBUF_METADATA_UINT8(pkt[1],
-				PROT_OFST_IP6);
+				FUN_PROT_OFST_IP6(pkt[1]));
 	uint8_t protocol2 = RTE_MBUF_METADATA_UINT8(pkt[2],
-				PROT_OFST_IP6);
+				FUN_PROT_OFST_IP6(pkt[2]));
 	uint8_t protocol3 = RTE_MBUF_METADATA_UINT8(pkt[3],
-				PROT_OFST_IP6);
+				FUN_PROT_OFST_IP6(pkt[3]));
 
 	uint32_t *src_addr0 = RTE_MBUF_METADATA_UINT32_PTR(pkt[0],
-				SRC_ADR_OFST_IP6);
+				FUN_SRC_ADR_OFST_IP6(pkt[0]));
 	uint32_t *src_addr1 = RTE_MBUF_METADATA_UINT32_PTR(pkt[1],
-				SRC_ADR_OFST_IP6);
+				FUN_SRC_ADR_OFST_IP6(pkt[1]));
 	uint32_t *src_addr2 = RTE_MBUF_METADATA_UINT32_PTR(pkt[2],
-				SRC_ADR_OFST_IP6);
+				FUN_SRC_ADR_OFST_IP6(pkt[2]));
 	uint32_t *src_addr3 = RTE_MBUF_METADATA_UINT32_PTR(pkt[3],
-				SRC_ADR_OFST_IP6);
+				FUN_SRC_ADR_OFST_IP6(pkt[3]));
 
 	uint16_t src_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
-				SRC_PRT_OFST_IP6);
+				FUN_SRC_PRT_OFST_IP6(pkt[0]));
 	uint16_t src_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
-				SRC_PRT_OFST_IP6);
+				FUN_SRC_PRT_OFST_IP6(pkt[1]));
 	uint16_t src_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
-				SRC_PRT_OFST_IP6);
+				FUN_SRC_PRT_OFST_IP6(pkt[2]));
 	uint16_t src_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
-				SRC_PRT_OFST_IP6);
+				FUN_SRC_PRT_OFST_IP6(pkt[3]));
 
 	uint16_t phy_port0 = pkt[0]->port;
 	uint16_t phy_port1 = pkt[1]->port;
@@ -5663,31 +5664,31 @@ pkt4_work_cgnapt_key_ipv6_pub(
 	uint64_t pkt_mask3 = 1LLU << (pkt_num + 3);
 
 	uint8_t protocol0 = RTE_MBUF_METADATA_UINT8(pkt[0],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[0]));
 	uint8_t protocol1 = RTE_MBUF_METADATA_UINT8(pkt[1],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[1]));
 	uint8_t protocol2 = RTE_MBUF_METADATA_UINT8(pkt[2],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[2]));
 	uint8_t protocol3 = RTE_MBUF_METADATA_UINT8(pkt[3],
-				PROT_OFST_IP4);
+				FUN_PROT_OFST_IP4(pkt[3]));
 
 	uint32_t *dst_addr0 = RTE_MBUF_METADATA_UINT32_PTR(pkt[0],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[0]));
 	uint32_t *dst_addr1 = RTE_MBUF_METADATA_UINT32_PTR(pkt[1],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[1]));
 	uint32_t *dst_addr2 = RTE_MBUF_METADATA_UINT32_PTR(pkt[2],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[2]));
 	uint32_t *dst_addr3 = RTE_MBUF_METADATA_UINT32_PTR(pkt[3],
-				DST_ADR_OFST_IP4);
+				FUN_DST_ADR_OFST_IP4(pkt[3]));
 
 	uint16_t dst_port0 = RTE_MBUF_METADATA_UINT16(pkt[0],
-				DST_PRT_OFST_IP4_TCP);
+				FUN_DST_PRT_OFST_IP4_TCP(pkt[0]));
 	uint16_t dst_port1 = RTE_MBUF_METADATA_UINT16(pkt[1],
-				DST_PRT_OFST_IP4_TCP);
+				FUN_DST_PRT_OFST_IP4_TCP(pkt[1]));
 	uint16_t dst_port2 = RTE_MBUF_METADATA_UINT16(pkt[2],
-				DST_PRT_OFST_IP4_TCP);
+				FUN_DST_PRT_OFST_IP4_TCP(pkt[2]));
 	uint16_t dst_port3 = RTE_MBUF_METADATA_UINT16(pkt[3],
-				DST_PRT_OFST_IP4_TCP);
+				FUN_DST_PRT_OFST_IP4_TCP(pkt[3]));
 
 	struct pipeline_cgnapt_entry_key key0;
 	struct pipeline_cgnapt_entry_key key1;
@@ -5910,7 +5911,7 @@ pkt_work_cgnapt_ipv6_prv(
 	/*bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP6);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP6(pkt));
 
 	/* Added for Multiport */
 	uint32_t dest_if = INVALID_DESTIF;
@@ -6022,18 +6023,18 @@ pkt_work_cgnapt_ipv6_prv(
 	*/
 
 	uint32_t *src_addr =
-		RTE_MBUF_METADATA_UINT32_PTR(pkt, SRC_ADR_OFST_IP6t4);
+		RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_SRC_ADR_OFST_IP6t4(pkt));
 	uint32_t *dst_addr =
-		RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP6t4);
+		RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP6t4(pkt));
 	uint16_t *src_port =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt, SRC_PRT_OFST_IP6t4);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_SRC_PRT_OFST_IP6t4(pkt));
 	uint16_t *dst_port =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt, DST_PRT_OFST_IP6t4);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_DST_PRT_OFST_IP6t4(pkt));
 
 	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt,
-				ETH_OFST_IP6t4);
+				FUN_ETH_OFST_IP6t4(pkt));
 	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt,
-				ETH_OFST_IP6t4 + 6);
+				FUN_ETH_OFST_IP6t4(pkt) + 6);
 
 	if (entry->data.ttl == NAPT_ENTRY_STALE)
 		entry->data.ttl = NAPT_ENTRY_VALID;
@@ -6190,7 +6191,7 @@ pkt_work_cgnapt_ipv6_pub(
 	/*bitmask representing only this packet */
 	uint64_t pkt_mask = 1LLU << pkt_num;
 
-	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+	uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 
 	uint32_t dest_if = INVALID_DESTIF;	/* Added for Multiport */
 	uint16_t *outport_id =
@@ -6232,10 +6233,10 @@ pkt_work_cgnapt_ipv6_pub(
 
 	struct ipv4_hdr ipv4_hdr;
 	uint16_t *src_port =
-		RTE_MBUF_METADATA_UINT16_PTR(pkt, SRC_PRT_OFST_IP4_TCP);
+		RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_SRC_PRT_OFST_IP4_TCP(pkt));
 
-	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
-	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+	uint8_t *eth_dest = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
+	uint8_t *eth_src = RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 	if (entry->data.ttl == NAPT_ENTRY_STALE)
 		entry->data.ttl = NAPT_ENTRY_VALID;
@@ -6337,9 +6338,9 @@ pkt_work_cgnapt_ipv6_pub(
 			return;
 		}
 		uint32_t *dst_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP4t6);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP4t6(pkt));
 		uint16_t *dst_port =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt, DST_PRT_OFST_IP4t6);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_DST_PRT_OFST_IP4t6(pkt));
 
 		memcpy((uint8_t *) &dst_addr[0], &entry->data.u.prv_ipv6[0],
 				 16);
@@ -6402,7 +6403,7 @@ pkt4_work_cgnapt_ipv6_prv(
 		/*bitmask representing only this packet */
 		uint64_t pkt_mask = 1LLU << pkt_num;
 
-		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP6);
+		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP6(pkt));
 		uint32_t dest_if = INVALID_DESTIF;
 		uint16_t *outport_id =
 			RTE_MBUF_METADATA_UINT16_PTR(pkt, cgnapt_meta_offset);
@@ -6511,18 +6512,18 @@ pkt4_work_cgnapt_ipv6_prv(
 		*/
 
 		uint32_t *src_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, SRC_ADR_OFST_IP6t4);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_SRC_ADR_OFST_IP6t4(pkt));
 		uint32_t *dst_addr =
-			RTE_MBUF_METADATA_UINT32_PTR(pkt, DST_ADR_OFST_IP6t4);
+			RTE_MBUF_METADATA_UINT32_PTR(pkt, FUN_DST_ADR_OFST_IP6t4(pkt));
 		uint16_t *src_port =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt, SRC_PRT_OFST_IP6t4);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_SRC_PRT_OFST_IP6t4(pkt));
 		uint16_t *dst_port =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt, DST_PRT_OFST_IP6t4);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_DST_PRT_OFST_IP6t4(pkt));
 
 		uint8_t *eth_dest =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, ETH_OFST_IP6t4);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_ETH_OFST_IP6t4(pkt));
 		uint8_t *eth_src =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, ETH_OFST_IP6t4 + 6);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_ETH_OFST_IP6t4(pkt) + 6);
 
 		if (entry->data.ttl == NAPT_ENTRY_STALE)
 			entry->data.ttl = NAPT_ENTRY_VALID;
@@ -6690,7 +6691,7 @@ pkt4_work_cgnapt_ipv6_pub(
 		/*bitmask representing only this packet */
 		uint64_t pkt_mask = 1LLU << pkt_num;
 
-		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, PROT_OFST_IP4);
+		uint8_t protocol = RTE_MBUF_METADATA_UINT8(pkt, FUN_PROT_OFST_IP4(pkt));
 		uint16_t *outport_id =
 			RTE_MBUF_METADATA_UINT16_PTR(pkt, cgnapt_meta_offset);
 		struct cgnapt_table_entry *entry = NULL;
@@ -6728,12 +6729,12 @@ pkt4_work_cgnapt_ipv6_pub(
 		struct ipv4_hdr ipv4_hdr;
 
 		uint16_t *src_port =
-			RTE_MBUF_METADATA_UINT16_PTR(pkt, SRC_PRT_OFST_IP4_TCP);
+			RTE_MBUF_METADATA_UINT16_PTR(pkt, FUN_SRC_PRT_OFST_IP4_TCP(pkt));
 
 		uint8_t *eth_dest =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 		uint8_t *eth_src =
-			RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+			RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 
 		if (entry->data.ttl == NAPT_ENTRY_STALE)
 			entry->data.ttl = NAPT_ENTRY_VALID;
@@ -6846,9 +6847,9 @@ pkt4_work_cgnapt_ipv6_pub(
 				continue;
 			}
 			uint32_t *dst_addr = RTE_MBUF_METADATA_UINT32_PTR(pkt,
-							DST_ADR_OFST_IP4t6);
+							FUN_DST_ADR_OFST_IP4t6(pkt));
 			uint16_t *dst_port = RTE_MBUF_METADATA_UINT16_PTR(pkt,
-							DST_PRT_OFST_IP4t6);
+							FUN_DST_PRT_OFST_IP4t6(pkt));
 
 			memcpy((uint8_t *) &dst_addr[0],
 					 &entry->data.u.prv_ipv6[0], 16);
@@ -7158,7 +7159,7 @@ void send_icmp_dest_unreachable_msg(void)
 
 	uint32_t *src_addr;
 	uint32_t src_addr_offset =
-		MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST;
+		cgnapt_icmp_pkt->data_off + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST;
 	src_addr =
 		RTE_MBUF_METADATA_UINT32_PTR(cgnapt_icmp_pkt, src_addr_offset);
 
@@ -7533,9 +7534,9 @@ pkt_miss_cgnapt(struct pipeline_cgnapt_entry_key *key,
 
 	struct pipeline_cgnapt *p_nat = (struct pipeline_cgnapt *)arg;
 
-	uint32_t eth_proto_offset = MBUF_HDR_ROOM + 12;
+	uint32_t eth_proto_offset = FUN_MBUF_HDR_ROOM(pkt) + 12;
 	uint32_t src_addr_offset_ipv6 =
-		MBUF_HDR_ROOM + ETH_HDR_SIZE + IPV6_HDR_SRC_ADR_OFST;
+		FUN_MBUF_HDR_ROOM(pkt) + ETH_HDR_SIZE + IPV6_HDR_SRC_ADR_OFST;
 	uint16_t phy_port = pkt->port;
 
 	uint16_t *eth_proto =

@@ -21,11 +21,11 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 TARGETS      := all clean
 VNF_DIR      := VNFs
-ACL          := $(VNF_DIR)/vACL
-FW           := $(VNF_DIR)/vFW
+#ACL          := $(VNF_DIR)/vACL
+#FW           := $(VNF_DIR)/vFW
 CGNAPT       := $(VNF_DIR)/vCGNAPT
-UDP_Replay   := $(VNF_DIR)/UDP_Replay
-PROX         := $(VNF_DIR)/DPPD-PROX
+#UDP_Replay   := $(VNF_DIR)/UDP_Replay
+#PROX         := $(VNF_DIR)/DPPD-PROX
 
 subdirs      := $(ACL) $(CGNAPT) $(FW) $(UDP_Replay) ${PROX}
 

@@ -49,12 +49,13 @@
 #include "l3fwd_common.h"
 #include "l3fwd_lpm6.h"
 #include "interface.h"
+#include "mbuf_hdr_room.h"
 
 /**
 * Define all RTE MBUF offset size
 */
 
-#define MBUF_HDR_ROOM 256 /**< MBUF HEADER ROOM OFFSET */
+#define FUN_MBUF_HDR_ROOM(pkt) DPDK_17_05_MBUF_HDR_ROOM(pkt) /**< MBUF HEADER ROOM OFFSET */
 
 /* IPv4 */
 #define ETH_HDR_SIZE  14 /**< ETHER HEADER OFFSET */

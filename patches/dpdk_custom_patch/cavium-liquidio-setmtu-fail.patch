@@ -1,0 +1,13 @@
+--- a/lib/librte_ether/rte_ethdev.c	2018-01-25 09:42:42.595641199 +0800
++++ b/lib/librte_ether/rte_ethdev.c	2018-01-25 09:45:11.842979098 +0800
+@@ -789,7 +789,8 @@
+ 			dev_conf->rxmode.max_rx_pkt_len > ETHER_MAX_LEN)
+ 			/* Use default value */
+ 			dev->data->dev_conf.rxmode.max_rx_pkt_len =
+-							ETHER_MAX_LEN;
++							//ETHER_MAX_LEN;
++							1450;
+ 	}
+ 
+ 	/*
+

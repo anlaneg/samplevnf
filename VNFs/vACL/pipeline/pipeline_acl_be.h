@@ -29,13 +29,14 @@
 #include "pipeline_common_be.h"
 #include "rte_ct_tcp.h"
 #include "pipeline_arpicmp_be.h"
+#include "mbuf_hdr_room.h"
 
 enum pipeline_acl_key_type {
 	PIPELINE_ACL_IPV4_5TUPLE,
 	PIPELINE_ACL_IPV6_5TUPLE
 };
 
-#define MBUF_HDR_ROOM 256
+#define FUN_MBUF_HDR_ROOM(pkt) DPDK_17_05_MBUF_HDR_ROOM(pkt)
 #define ETH_HDR_SIZE  14
 #define IP_HDR_SIZE  20
 #define IP_HDR_DSCP_OFST 1

@@ -19,8 +19,9 @@
 
 #include <rte_pipeline.h>
 #include <rte_ether.h>
+#include "mbuf_hdr_room.h"
 
-#define MBUF_HDR_ROOM 256
+#define FUN_MBUF_HDR_ROOM(pkt) DPDK_17_05_MBUF_HDR_ROOM(pkt)
 #define ETH_HDR_SIZE  14
 #define IP_HDR_SRC_ADR_OFST 12
 #define IP_HDR_DST_ADR_OFST 16

@@ -310,7 +310,7 @@ lpm4_table_lookup(struct rte_mbuf **pkts_burst, uint16_t nb_pkts,
 				 nb_pkts, rcvd_count, (void *)pkts_mask);
 	}
 	uint32_t dst_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 
 	for (; pkts_key_mask;) {
 /**< Populate key offset in META DATA for all valid pkts */
@@ -323,7 +323,7 @@ lpm4_table_lookup(struct rte_mbuf **pkts_burst, uint16_t nb_pkts,
 		lpm_key = (uint32_t *) RTE_MBUF_METADATA_UINT8_PTR(mbuf, 128);
 		dst_addr =
 				(uint32_t *) RTE_MBUF_METADATA_UINT8_PTR(mbuf,
-									 dst_addr_offset);
+									 mbuf->data_off+ dst_addr_offset);
 		*lpm_key = *dst_addr;
 		if (L3FWD_DEBUG) {
 
@@ -430,9 +430,9 @@ lpm4_table_lookup(struct rte_mbuf **pkts_burst, uint16_t nb_pkts,
 
 		/* extract ip headers and MAC */
 		uint8_t *eth_dest =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt));
 		uint8_t *eth_src =
-				RTE_MBUF_METADATA_UINT8_PTR(pkt, MBUF_HDR_ROOM + 6);
+				RTE_MBUF_METADATA_UINT8_PTR(pkt, FUN_MBUF_HDR_ROOM(pkt) + 6);
 		if (L3FWD_DEBUG) {
 			printf
 					("MAC BEFORE- DST MAC %02x:%02x:%02x:%02x:%02x:%02x, \
@@ -1074,9 +1074,9 @@ resolve_l2_adj(uint32_t nexthop_ip, uint8_t out_port_id,
 uint8_t ip_hash_load_balance(struct rte_mbuf *mbuf)
 {
 	uint32_t src_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST;
+			mbuf->data_off + ETH_HDR_SIZE + IP_HDR_SRC_ADR_OFST;
 	uint32_t dst_addr_offset =
-			MBUF_HDR_ROOM + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
+			mbuf->data_off + ETH_HDR_SIZE + IP_HDR_DST_ADR_OFST;
 	uint32_t *dst_addr = NULL;
 	uint32_t *src_addr = NULL;
 	src_addr =
