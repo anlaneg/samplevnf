@@ -617,6 +617,52 @@ static cmdline_parse_inst_t cmd_entry_add = {
 			 },
 };
 
+static cmdline_parse_token_string_t cmd_cgnat_acc_enable_string =
+TOKEN_STRING_INITIALIZER(struct cmd_entry_add_result, entry_string,
+                        "flow-accelerate-enable");
+
+int cgnat_flow_acc_enable = 0;
+
+static void
+cmd_cgnat_acc_enable_parsed(void *parsed_result,
+                                       struct cmdline *cl, void *data)
+{
+       cgnat_flow_acc_enable = 1;
+}
+
+static cmdline_parse_inst_t  cmd_cgnat_acc_enable= {
+       .f = cmd_cgnat_acc_enable_parsed,
+       .data = NULL,
+       .help_str = "vCGNAT flow accelerate enable",
+       .tokens = {
+                       (void *)&cmd_entry_add_p_string,
+                       (void *)&cmd_cgnat_acc_enable_string,
+                       NULL,
+       },
+};
+
+static void
+cmd_cgnat_acc_disable_parsed(void *parsed_result,
+                               struct cmdline *cl, void *data)
+{
+	cgnat_flow_acc_enable = 0;
+}
+
+static cmdline_parse_token_string_t cmd_cgnat_acc_disable_string =
+TOKEN_STRING_INITIALIZER(struct cmd_entry_add_result, entry_string,
+                        "flow-accelerate-disable");
+
+static cmdline_parse_inst_t  cmd_cgnat_acc_disable= {
+       .f = cmd_cgnat_acc_disable_parsed,
+       .data = NULL,
+       .help_str = "vCGNAT flow accelerate enable",
+       .tokens = {
+                       (void *)&cmd_entry_add_p_string,
+                       (void *)&cmd_cgnat_acc_disable_string,
+                       NULL,
+       },
+};
+
 /**
  * A structure defining the multiple entry add parse arguments.
  */
@@ -1726,6 +1772,8 @@ static cmdline_parse_ctx_t pipeline_cmds[] = {
 	#endif
 	(cmdline_parse_inst_t *) &cmd_stats,
 	(cmdline_parse_inst_t *) &cmd_clear_stats,
+	(cmdline_parse_inst_t *) &cmd_cgnat_acc_enable,
+	(cmdline_parse_inst_t *) &cmd_cgnat_acc_disable,
 	NULL,
 };
 

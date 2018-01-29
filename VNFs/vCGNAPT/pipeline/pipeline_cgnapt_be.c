@@ -78,6 +78,8 @@
 #include "cgnapt_pcp_be.h"
 #endif
 
+#include "cgnapt_accelerate.h"
+
 /* To maintain all cgnapt pipeline pointers used for all stats */
 struct pipeline_cgnapt *all_pipeline_cgnapt[128];
 uint8_t n_cgnapt_pipeline;
@@ -3561,6 +3563,8 @@ pkt_work_cgnapt_key_ipv4_pub(
 }
 
 
+extern int cgnat_flow_acc_enable;
+
 /**
  * NAPT function for IPv4 private traffic which handles 1 pkt
  *
@@ -3737,6 +3741,12 @@ pkt_work_cgnapt_ipv4_prv(
 
 	*outport_id = p_nat->outport_id[dest_if];
 
+	//save old ether header
+	uint8_t srcmac[6];
+	uint8_t dstmac[6];
+	memcpy(dstmac,eth_dest,sizeof(dstmac));
+	memcpy(srcmac,eth_src,sizeof(srcmac));
+
 	if (arp_cache_dest_mac_present(dest_if)) {
 		ether_addr_copy(get_link_hw_addr(dest_if),(struct ether_addr *)eth_src);
 		update_nhip_access(dest_if);
@@ -3784,6 +3794,28 @@ pkt_work_cgnapt_ipv4_prv(
 				}
 		}
 
+	}
+
+	if(cgnat_flow_acc_enable)
+	{
+	   struct acc_flow cgnat_flow;
+	   uint16_t current_src_port = rte_bswap16(*src_port);
+	   uint32_t xlate_addr = rte_bswap32(entry->data.pub_ip);
+	   memset(&cgnat_flow,0,sizeof(cgnat_flow));
+
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),srcmac,(srcmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dstmac,(dstmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),src_ip,(*src_addr));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),src_port,current_src_port);
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),protocol,(protocol));
+
+	   acc_action_field_set(&(cgnat_flow.action),srcmac,(*eth_src));
+	   acc_action_field_set(&(cgnat_flow.action),dstmac,(*eth_dest));
+	   acc_action_field_set(&(cgnat_flow.action),src_ip,xlate_addr);
+	   acc_action_field_set(&(cgnat_flow.action),src_port,(entry->data.pub_port));
+
+	   printf("***************Dest MAC after - %02x:%02x:%02x:%02x:%02x:%02x\n", eth_src[0], eth_src[1], eth_src[2], eth_src[3], eth_src[4], eth_src[5]);
+		cgnat_accelerate(&p_nat->p,&cgnat_flow);
 	}
 
 	{
@@ -4089,6 +4121,12 @@ pkt_work_cgnapt_ipv4_pub(
 			(struct ether_addr *)eth_dest);
 	*outport_id = p_nat->outport_id[dest_if];
 
+	//save old ether header
+	uint8_t srcmac[6];
+	uint8_t dstmac[6];
+	memcpy(dstmac,eth_dest,sizeof(dstmac));
+	memcpy(srcmac,eth_src,sizeof(srcmac));
+
 	if (arp_cache_dest_mac_present(dest_if)) {
 		ether_addr_copy(get_link_hw_addr(dest_if), (struct ether_addr *)eth_src);
 		update_nhip_access(dest_if);
@@ -4141,6 +4179,28 @@ pkt_work_cgnapt_ipv4_pub(
 			}
 		}
 	}
+
+    if(cgnat_flow_acc_enable)
+    {
+	   struct acc_flow cgnat_flow;
+	   uint16_t current_dst_port = rte_bswap16(*dst_port);
+	   uint32_t xlate_addr = rte_bswap32(entry->data.u.prv_ip);
+	   memset(&cgnat_flow,0,sizeof(cgnat_flow));
+
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),srcmac,(srcmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dstmac,(dstmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dst_ip,(*dst_addr));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dst_port,current_dst_port);
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),protocol,(protocol));
+
+	   acc_action_field_set(&(cgnat_flow.action),srcmac,(*eth_src));
+	   acc_action_field_set(&(cgnat_flow.action),dstmac,(*eth_dest));
+	   acc_action_field_set(&(cgnat_flow.action),dst_ip,xlate_addr);
+	   acc_action_field_set(&(cgnat_flow.action),dst_port,(entry->data.prv_port));
+
+	   printf("***************Dest MAC after - %02x:%02x:%02x:%02x:%02x:%02x\n", eth_src[0], eth_src[1], eth_src[2], eth_src[3], eth_src[4], eth_src[5]);
+		cgnat_accelerate(&p_nat->p,&cgnat_flow);
+    }
 
 	{
 		/* Ingress */
@@ -4539,6 +4599,12 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		*outport_id = p_nat->outport_id[dest_if];
 
+		//save older ether header
+		uint8_t srcmac[6];
+		uint8_t dstmac[6];
+		memcpy(dstmac,eth_dest,sizeof(dstmac));
+	    memcpy(srcmac,eth_src,sizeof(srcmac));
+
 		if (arp_cache_dest_mac_present(dest_if)) {
 			ether_addr_copy(get_link_hw_addr(dest_if),
 				 (struct ether_addr *)eth_src);
@@ -4589,6 +4655,28 @@ pkt4_work_cgnapt_ipv4_prv(
 				}
 			}
 		}
+
+	    if(cgnat_flow_acc_enable)
+	    {
+		   struct acc_flow cgnat_flow;
+		   uint16_t current_src_port = rte_bswap16(*src_port);
+		   uint32_t xlate_addr = rte_bswap32(entry->data.pub_ip);
+		   memset(&cgnat_flow,0,sizeof(cgnat_flow));
+
+		   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),srcmac,(srcmac));
+		   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dstmac,(dstmac));
+		   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),src_ip,(*src_addr));
+		   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),src_port,current_src_port);
+		   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),protocol,(protocol));
+
+		   acc_action_field_set(&(cgnat_flow.action),srcmac,(*eth_src));
+		   acc_action_field_set(&(cgnat_flow.action),dstmac,(*eth_dest));
+		   acc_action_field_set(&(cgnat_flow.action),src_ip,xlate_addr);
+		   acc_action_field_set(&(cgnat_flow.action),src_port,(entry->data.pub_port));
+
+		   printf("***************Dest MAC after - %02x:%02x:%02x:%02x:%02x:%02x\n", eth_src[0], eth_src[1], eth_src[2], eth_src[3], eth_src[4], eth_src[5]);
+		   cgnat_accelerate(&p_nat->p,&cgnat_flow);
+	    }
 
 		{
 			/* Egress */
@@ -4909,6 +4997,12 @@ pkt4_work_cgnapt_ipv4_pub(
 
 		*outport_id = p_nat->outport_id[dest_if];
 
+		//save older ether header
+		uint8_t srcmac[6];
+		uint8_t dstmac[6];
+		memcpy(dstmac,eth_dest,sizeof(dstmac));
+		memcpy(srcmac,eth_src,sizeof(srcmac));
+
 		if (arp_cache_dest_mac_present(dest_if)) {
 			ether_addr_copy(get_link_hw_addr(dest_if),
 					(struct ether_addr *)eth_src);
@@ -4958,6 +5052,28 @@ pkt4_work_cgnapt_ipv4_pub(
 			}
 		}
 	}
+
+    if(cgnat_flow_acc_enable)
+    {
+	   struct acc_flow cgnat_flow;
+	   uint16_t current_dst_port = rte_bswap16(*dst_port);
+	   uint32_t xlate_addr = rte_bswap32(entry->data.u.prv_ip);
+	   memset(&cgnat_flow,0,sizeof(cgnat_flow));
+
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),srcmac,(srcmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dstmac,(dstmac));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dst_ip,(*dst_addr));
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),dst_port,current_dst_port);
+	   acc_match_field_set(&(cgnat_flow.match),&(cgnat_flow.mask),protocol,(protocol));
+
+	   acc_action_field_set(&(cgnat_flow.action),srcmac,(*eth_src));
+	   acc_action_field_set(&(cgnat_flow.action),dstmac,(*eth_dest));
+	   acc_action_field_set(&(cgnat_flow.action),dst_ip,xlate_addr);
+	   acc_action_field_set(&(cgnat_flow.action),dst_port,(entry->data.prv_port));
+
+	   printf("***************Dest MAC after - %02x:%02x:%02x:%02x:%02x:%02x\n", eth_src[0], eth_src[1], eth_src[2], eth_src[3], eth_src[4], eth_src[5]);
+	   cgnat_accelerate(&p_nat->p,&cgnat_flow);
+     }
 
 		{
 			/* Ingress */

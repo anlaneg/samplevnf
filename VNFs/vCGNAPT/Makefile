@@ -57,6 +57,7 @@ INC += $(wildcard $(VNF_CORE)/common/VIL/conntrack/*.h)
 INC += $(wildcard $(VNF_CORE)/common/VIL/alg/*.h)
 INC += $(wildcard $(VNF_CORE)/common/VIL/gateway/*.h)
 
+
 CFLAGS += -I$(SRCDIR) -mrtm -mhle -I$(SRCDIR)/pipeline -I$(VNF_CORE)/common/vnf_common
 CFLAGS += -I$(VNF_CORE)/common/VIL/l2l3_stack -I$(VNF_CORE)/common/VIL/conntrack
 CFLAGS += -I$(VNF_CORE)/common/VIL/pipeline_common -I$(VNF_CORE)/common/VIL/pipeline_loadb
@@ -64,6 +65,7 @@ CFLAGS += -I$(VNF_CORE)/common/VIL/pipeline_master -I$(VNF_CORE)/common/VIL/pipe
 CFLAGS += -I$(VNF_CORE)/common/VIL/pipeline_txrx -I$(VNF_CORE)/common/VIL/alg
 CFLAGS += -I$(VNF_CORE)/common/VIL/pipeline_arpicmp
 CFLAGS += -I$(VNF_CORE)/common/VIL/gateway
+CFLAGS += $(ACC_INCLUDE_PATH) 
 
 TOP = $(RTE_SDK)/../civetweb
 CFLAGS += -I$(TOP)/include $(COPT) -DUSE_WEBSOCKET -DUSE_IPV6 -DUSE_SSL_DH=1
@@ -126,5 +128,7 @@ CFLAGS += -DCHECKSUM_REQ
 #CFLAGS += -DALG
 #CFLAGS += -DCT_CGNAT
 #CFLAGS += -DFTP_ALG
+
+_LDLIBS-y += $(ACC_LIB_PATH)
 
 include $(RTE_SDK)/mk/rte.extapp.mk
