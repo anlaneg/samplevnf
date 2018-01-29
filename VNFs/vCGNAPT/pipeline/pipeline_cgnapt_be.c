@@ -3736,16 +3736,16 @@ pkt_work_cgnapt_ipv4_prv(
 
 	gw_get_nh_port_ipv4(dest_address, &dest_if, &nhip);
 
-	ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
-			(struct ether_addr *)eth_dest);
-
-	*outport_id = p_nat->outport_id[dest_if];
-
-	//save old ether header
+	//save older ether header
 	uint8_t srcmac[6];
 	uint8_t dstmac[6];
 	memcpy(dstmac,eth_dest,sizeof(dstmac));
 	memcpy(srcmac,eth_src,sizeof(srcmac));
+
+	ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
+			(struct ether_addr *)eth_dest);
+
+	*outport_id = p_nat->outport_id[dest_if];
 
 	if (arp_cache_dest_mac_present(dest_if)) {
 		ether_addr_copy(get_link_hw_addr(dest_if),(struct ether_addr *)eth_src);
@@ -4117,15 +4117,15 @@ pkt_work_cgnapt_ipv4_pub(
 
 	gw_get_nh_port_ipv4(dest_address, &dest_if, &nhip);
 
-	ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
-			(struct ether_addr *)eth_dest);
-	*outport_id = p_nat->outport_id[dest_if];
-
-	//save old ether header
+	//save older ether header
 	uint8_t srcmac[6];
 	uint8_t dstmac[6];
 	memcpy(dstmac,eth_dest,sizeof(dstmac));
 	memcpy(srcmac,eth_src,sizeof(srcmac));
+
+	ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
+			(struct ether_addr *)eth_dest);
+	*outport_id = p_nat->outport_id[dest_if];
 
 	if (arp_cache_dest_mac_present(dest_if)) {
 		ether_addr_copy(get_link_hw_addr(dest_if), (struct ether_addr *)eth_src);
@@ -4594,16 +4594,17 @@ pkt4_work_cgnapt_ipv4_prv(
 
 		gw_get_nh_port_ipv4(dest_address, &dest_if, &nhip);
 
-		ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
-				(struct ether_addr *)eth_dest);
-
-		*outport_id = p_nat->outport_id[dest_if];
-
 		//save older ether header
 		uint8_t srcmac[6];
 		uint8_t dstmac[6];
 		memcpy(dstmac,eth_dest,sizeof(dstmac));
 	    memcpy(srcmac,eth_src,sizeof(srcmac));
+
+		ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
+				(struct ether_addr *)eth_dest);
+
+		*outport_id = p_nat->outport_id[dest_if];
+
 
 		if (arp_cache_dest_mac_present(dest_if)) {
 			ether_addr_copy(get_link_hw_addr(dest_if),
@@ -4992,16 +4993,16 @@ pkt4_work_cgnapt_ipv4_pub(
 
 		gw_get_nh_port_ipv4(dest_address, &dest_if, &nhip);
 
-		ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
-				(struct ether_addr *)eth_dest);
-
-		*outport_id = p_nat->outport_id[dest_if];
-
 		//save older ether header
 		uint8_t srcmac[6];
 		uint8_t dstmac[6];
 		memcpy(dstmac,eth_dest,sizeof(dstmac));
 		memcpy(srcmac,eth_src,sizeof(srcmac));
+
+		ret_arp_data = get_dest_mac_addr_ipv4(nhip, dest_if,
+				(struct ether_addr *)eth_dest);
+
+		*outport_id = p_nat->outport_id[dest_if];
 
 		if (arp_cache_dest_mac_present(dest_if)) {
 			ether_addr_copy(get_link_hw_addr(dest_if),
