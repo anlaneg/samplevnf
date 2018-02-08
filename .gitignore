@@ -11,4 +11,6 @@ civetweb/
 dpdk-17.05.zip
 dpdk/
 acc_swlb_2000_flow.tc
-
+.cproject
+.project
+.settings/
