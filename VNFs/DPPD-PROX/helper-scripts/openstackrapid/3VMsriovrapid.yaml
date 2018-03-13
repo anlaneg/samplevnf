@@ -47,7 +47,15 @@ parameters:
     label: Floating network name or ID
     description: Public Network to attach instance to.
     default: admin_floating_net
-  availability_zone:
+  vm1_availability_zone:
+    type: string
+    description: The Availability Zone to launch the instance.
+    default: nova
+  vm2_availability_zone:
+    type: string
+    description: The Availability Zone to launch the instance.
+    default: nova
+  vm3_availability_zone:
     type: string
     description: The Availability Zone to launch the instance.
     default: nova
@@ -79,7 +87,7 @@ resources:
   vm1:
     type: OS::Nova::Server
     properties:
-      availability_zone: { get_param: availability_zone }
+      availability_zone: { get_param: vm1_availability_zone }
       user_data:
         get_file: prox_user_data.sh
       key_name: { get_param: key }
@@ -102,7 +110,7 @@ resources:
   vm2:
     type: OS::Nova::Server
     properties:
-      availability_zone: { get_param: availability_zone }
+      availability_zone: { get_param: vm2_availability_zone }
       user_data:
         get_file: prox_user_data.sh
       key_name: { get_param: key }
@@ -125,7 +133,7 @@ resources:
   vm3:
     type: OS::Nova::Server
     properties:
-      availability_zone: { get_param: availability_zone }
+      availability_zone: { get_param: vm3_availability_zone }
       user_data:
         get_file: prox_user_data.sh
       key_name: { get_param: key }
@@ -167,7 +175,7 @@ outputs:
     description: IP address of VM3 admin port
     value: { get_attr: [vm3_admin_port, fixed_ips, 0, ip_address] }
   vm3_public_ip:
-    description: Floating IP address of VM32 in public network
+    description: Floating IP address of VM3 in public network
     value: { get_attr: [ vm3_floating_ip, floating_ip_address ] }
   vm3_dataplane_ip:
     description: IP address of VM3 dataplane port

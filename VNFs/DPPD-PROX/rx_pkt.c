@@ -77,7 +77,7 @@ static void next_port_pow2(struct rx_params_hw *rx_params_hw)
 static inline void dump_l3(struct task_base *tbase, struct rte_mbuf *mbuf)
 {
 	if (unlikely(tbase->aux->task_rt_dump.n_print_rx)) {
-		if (tbase->aux->task_rt_dump.input->reply == NULL) {
+		if ((tbase->aux->task_rt_dump.input == NULL) || (tbase->aux->task_rt_dump.input->reply == NULL)) {
 			plogdx_info(mbuf, "RX: ");
 		} else {
 			struct input *input = tbase->aux->task_rt_dump.input;
@@ -388,13 +388,9 @@ static uint16_t call_prev_rx_pkt(struct task_base *tbase, struct rte_mbuf ***mbu
 {
 	uint16_t ret;
 
-	if (tbase->aux->rx_prev_idx + 1 == tbase->aux->rx_prev_count) {
-		ret = tbase->aux->rx_pkt_prev[tbase->aux->rx_prev_idx](tbase, mbufs);
-	} else {
-		tbase->aux->rx_prev_idx++;
-		ret = tbase->aux->rx_pkt_prev[tbase->aux->rx_prev_idx](tbase, mbufs);
-		tbase->aux->rx_prev_idx--;
-	}
+	tbase->aux->rx_prev_idx++;
+	ret = tbase->aux->rx_pkt_prev[tbase->aux->rx_prev_idx - 1](tbase, mbufs);
+	tbase->aux->rx_prev_idx--;
 
 	return ret;
 }
@@ -412,7 +408,7 @@ uint16_t rx_pkt_dump(struct task_base *tbase, struct rte_mbuf ***mbufs)
 		uint32_t n_dump = tbase->aux->task_rt_dump.n_print_rx;
 		n_dump = ret < n_dump? ret : n_dump;
 
-		if (tbase->aux->task_rt_dump.input->reply == NULL) {
+		if ((tbase->aux->task_rt_dump.input == NULL) || (tbase->aux->task_rt_dump.input->reply == NULL)) {
 			for (uint32_t i = 0; i < n_dump; ++i) {
 				plogdx_info((*mbufs)[i], "RX: ");
 			}
@@ -457,12 +453,13 @@ uint16_t rx_pkt_trace(struct task_base *tbase, struct rte_mbuf ***mbufs)
 	if (ret) {
 		uint32_t n_trace = tbase->aux->task_rt_dump.n_trace;
 		n_trace = ret < n_trace? ret : n_trace;
+		n_trace = n_trace <= MAX_RING_BURST ? n_trace : MAX_RING_BURST;
 
 		for (uint32_t i = 0; i < n_trace; ++i) {
 			uint8_t *pkt = rte_pktmbuf_mtod((*mbufs)[i], uint8_t *);
-			rte_memcpy(tbase->aux->task_rt_dump.pkt_cpy[tbase->aux->task_rt_dump.cur_trace + i], pkt, sizeof(tbase->aux->task_rt_dump.pkt_cpy[i]));
-			tbase->aux->task_rt_dump.pkt_cpy_len[tbase->aux->task_rt_dump.cur_trace + i] = rte_pktmbuf_pkt_len((*mbufs)[i]);
-			tbase->aux->task_rt_dump.pkt_mbuf_addr[tbase->aux->task_rt_dump.cur_trace + i] = (*mbufs)[i];
+			rte_memcpy(tbase->aux->task_rt_dump.pkt_cpy[i], pkt, sizeof(tbase->aux->task_rt_dump.pkt_cpy[i]));
+			tbase->aux->task_rt_dump.pkt_cpy_len[i] = rte_pktmbuf_pkt_len((*mbufs)[i]);
+			tbase->aux->task_rt_dump.pkt_mbuf_addr[i] = (*mbufs)[i];
 		}
 		tbase->aux->task_rt_dump.cur_trace += n_trace;
 
@@ -479,7 +476,10 @@ uint16_t rx_pkt_distr(struct task_base *tbase, struct rte_mbuf ***mbufs)
 {
 	uint16_t ret = call_prev_rx_pkt(tbase, mbufs);
 
-	tbase->aux->rx_bucket[ret]++;
+	if (likely(ret < RX_BUCKET_SIZE))
+		tbase->aux->rx_bucket[ret]++;
+	else
+		tbase->aux->rx_bucket[RX_BUCKET_SIZE - 1]++;
 	return ret;
 }
 

@@ -19,8 +19,16 @@
 #include <rte_version.h>
 #include <rte_eth_ring.h>
 #include <rte_mbuf.h>
-#if (RTE_VERSION >= RTE_VERSION_NUM(2,1,0,0)) && (RTE_VERSION <= RTE_VERSION_NUM(17,5,0,1))
+#if (RTE_VERSION >= RTE_VERSION_NUM(17,11,0,0))
+#include <rte_bus_vdev.h>
+#else
+#if (RTE_VERSION > RTE_VERSION_NUM(17,5,0,2))
+#include <rte_dev.h>
+#else
+#if (RTE_VERSION >= RTE_VERSION_NUM(2,1,0,0))
 #include <rte_eth_null.h>
+#endif
+#endif
 #endif
 
 #include "prox_port_cfg.h"
@@ -31,6 +39,7 @@
 #include "toeplitz.h"
 #include "defines.h"
 #include "prox_cksum.h"
+#include "stats_irq.h"
 
 struct prox_port_cfg prox_port_cfg[PROX_MAX_PORTS];
 rte_atomic32_t lsc;
@@ -46,7 +55,7 @@ int prox_nb_active_ports(void)
 
 int prox_last_port_active(void)
 {
-	int ret = 0;
+	int ret = -1;
 	for (uint32_t i = 0; i < PROX_MAX_PORTS; ++i) {
 		if (prox_port_cfg[i].active) {
 			ret = i;
@@ -55,11 +64,16 @@ int prox_last_port_active(void)
 	return ret;
 }
 
+#if RTE_VERSION >= RTE_VERSION_NUM(17,11,0,0)
+static int lsc_cb(__attribute__((unused)) uint16_t port_id, enum rte_eth_event_type type, __attribute__((unused)) void *param,
+	__attribute__((unused)) void *ret_param)
+#else
 #if RTE_VERSION >= RTE_VERSION_NUM(17,8,0,1)
 static int lsc_cb(__attribute__((unused)) uint8_t port_id, enum rte_eth_event_type type, __attribute__((unused)) void *param,
 	__attribute__((unused)) void *ret_param)
 #else
 static void lsc_cb(__attribute__((unused)) uint8_t port_id, enum rte_eth_event_type type, __attribute__((unused)) void *param)
+#endif
 #endif
 {
 	if (RTE_ETH_EVENT_INTR_LSC != type) {
@@ -112,7 +126,8 @@ void prox_pktmbuf_reinit(void *arg, void *start, __attribute__((unused)) void *e
 /* initialize rte devices and check the number of available ports */
 void init_rte_dev(int use_dummy_devices)
 {
-	uint8_t nb_ports, port_id_max, port_id_last;
+	uint8_t nb_ports, port_id_max;
+	int port_id_last;
 	struct rte_eth_dev_info dev_info;
 
 	nb_ports = rte_eth_dev_count();
@@ -120,20 +135,24 @@ void init_rte_dev(int use_dummy_devices)
 	PROX_PANIC(use_dummy_devices && nb_ports, "Can't use dummy devices while there are also real ports\n");
 
 	if (use_dummy_devices) {
-#if (RTE_VERSION >= RTE_VERSION_NUM(2,1,0,0)) && (RTE_VERSION <= RTE_VERSION_NUM(17,5,0,1))
+#if (RTE_VERSION >= RTE_VERSION_NUM(2,1,0,0))
 		nb_ports = prox_last_port_active() + 1;
 		plog_info("Creating %u dummy devices\n", nb_ports);
 
 		char port_name[32] = "0dummy_dev";
 		for (uint32_t i = 0; i < nb_ports; ++i) {
+#if (RTE_VERSION > RTE_VERSION_NUM(17,5,0,1))
+			rte_vdev_init(port_name, "size=ETHER_MIN_LEN,copy=0");
+#else
 			eth_dev_null_create(port_name, 0, ETHER_MIN_LEN, 0);
+#endif
 			port_name[0]++;
 		}
 #else
 	PROX_PANIC(use_dummy_devices, "Can't use dummy devices\n");
 #endif
 	}
-	else {
+	else if (prox_last_port_active() != -1) {
 		PROX_PANIC(nb_ports == 0, "\tError: DPDK could not find any port\n");
 		plog_info("\tDPDK has found %u ports\n", nb_ports);
 	}

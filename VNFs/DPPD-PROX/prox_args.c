@@ -35,6 +35,7 @@
 #include "defaults.h"
 #include "prox_lua.h"
 #include "cqm.h"
+#include "prox_compat.h"
 
 #define MAX_RTE_ARGV 64
 #define MAX_ARG_LEN  64
@@ -1292,7 +1293,7 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
 			}
 			else if (STR_EQ(pkey, "packet"))
 				return 0;
-			else if (STR_EQ(pkey, "packet")) {
+			else if (STR_EQ(pkey, "hw")) {
 				targ->flags |= TASK_ARG_HW_SRC_MAC;
 				return 0;
 			} else {
@@ -1518,6 +1519,11 @@ static int get_core_cfg(unsigned sindex, char *str, void *data)
                 targ->lookup_port_mask = val;
                 return 0;
         }
+
+	if (STR_EQ(str, "irq debug")) {
+		parse_int(&targ->irq_debug, pkey);
+		return 0;
+	}
 
 	set_errf("Option '%s' is not known", str);
 	/* fail on unknown keys */
@@ -1955,7 +1961,7 @@ int prox_setup_rte(const char *prog_name)
 	}
 
 	if (rte_cfg.no_output) {
-		rte_set_log_level(0);
+		rte_log_set_global_level(0);
 	}
 	/* init EAL */
 	plog_info("\tEAL command line:");

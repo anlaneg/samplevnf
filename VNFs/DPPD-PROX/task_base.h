@@ -143,6 +143,9 @@ struct task_base;
 
 #define MAX_RX_PKT_ALL 16384
 
+#define RX_BUCKET_SIZE (2 * MAX_RING_BURST + 1) /* Limit RX bucket size */
+#define TX_BUCKET_SIZE	(MAX_RING_BURST +1)
+
 #define MAX_STACKED_RX_FUCTIONS 16
 
 typedef uint16_t (*rx_pkt_func) (struct task_base *tbase, struct rte_mbuf ***mbufs);
@@ -164,8 +167,8 @@ struct task_base_aux {
 	int      rx_prev_idx;
 	uint16_t (*rx_pkt_prev[MAX_STACKED_RX_FUCTIONS])(struct task_base *tbase, struct rte_mbuf ***mbufs);
 
-	uint32_t rx_bucket[MAX_RING_BURST + 1];
-	uint32_t tx_bucket[MAX_RING_BURST + 1];
+	uint32_t rx_bucket[RX_BUCKET_SIZE];
+	uint32_t tx_bucket[TX_BUCKET_SIZE];
 	int (*tx_pkt_l2)(struct task_base *tbase, struct rte_mbuf **mbufs, const uint16_t n_pkts, uint8_t *out);
 	int (*tx_pkt_orig)(struct task_base *tbase, struct rte_mbuf **mbufs, const uint16_t n_pkts, uint8_t *out);
 	int (*tx_pkt_hw)(struct task_base *tbase, struct rte_mbuf **mbufs, const uint16_t n_pkts, uint8_t *out);
@@ -213,8 +216,8 @@ static void task_base_add_rx_pkt_function(struct task_base *tbase, rx_pkt_func t
 		return;
 	}
 
-	for (int16_t i = tbase->aux->rx_prev_count; i >= 0; --i) {
-		tbase->aux->rx_pkt_prev[i + 1] = tbase->aux->rx_pkt_prev[i];
+	for (int16_t i = tbase->aux->rx_prev_count; i > 0; --i) {
+		tbase->aux->rx_pkt_prev[i] = tbase->aux->rx_pkt_prev[i - 1];
 	}
 	tbase->aux->rx_pkt_prev[0] = tbase->rx_pkt;
 	tbase->rx_pkt = to_add;
@@ -226,8 +229,13 @@ static void task_base_del_rx_pkt_function(struct task_base *tbase, rx_pkt_func t
 	int cur = 0;
 	int found = 0;
 
-	if (tbase->aux->rx_prev_count == 1) {
+	if (unlikely(tbase->aux->rx_prev_count == 0)) {
+		return;
+	} else if (tbase->rx_pkt == to_del) {
 		tbase->rx_pkt = tbase->aux->rx_pkt_prev[0];
+		for (int16_t i = 0; i < tbase->aux->rx_prev_count - 1; ++i) {
+			tbase->aux->rx_pkt_prev[i] = tbase->aux->rx_pkt_prev[i + 1];
+		}
 		found = 1;
 	} else {
 		for (int16_t i = 0; i < tbase->aux->rx_prev_count; ++i) {
